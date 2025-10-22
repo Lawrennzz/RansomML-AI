@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ransomware Detection AI/ML Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .main-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            margin: 20px;
+            padding: 30px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        .header h1 {
+            color: #2c3e50;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #7f8c8d;
+            font-size: 1.1em;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+            margin-bottom: 20px;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            padding: 15px 20px;
+            font-weight: 600;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 12px 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 12px 25px;
+            font-weight: 600;
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #51cf66 0%, #40c057 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 12px 25px;
+            font-weight: 600;
+        }
+        
+        .form-control {
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            padding: 12px 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        
+        .alert {
+            border-radius: 10px;
+            border: none;
+            padding: 15px 20px;
+        }
+        
+        .metric-card {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .metric-value {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        .metric-label {
+            color: #7f8c8d;
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 20px 0;
+        }
+        
+        .detection-result {
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .detection-result.ransomware {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+            color: white;
+        }
+        
+        .detection-result.benign {
+            background: linear-gradient(135deg, #51cf66 0%, #40c057 100%);
+            color: white;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+        
+        .feature-input-group {
+            margin-bottom: 15px;
+        }
+        
+        .feature-label {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        
+        .nav-tabs {
+            border-bottom: 2px solid #e9ecef;
+        }
+        
+        .nav-tabs .nav-link {
+            border: none;
+            border-radius: 10px 10px 0 0;
+            margin-right: 5px;
+            font-weight: 600;
+            color: #7f8c8d;
+        }
+        
+        .nav-tabs .nav-link.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .tab-content {
+            padding: 20px 0;
+        }
+        
+        .history-item {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+        }
+        
+        .history-item.ransomware {
+            border-left-color: #ff6b6b;
+            background: #fff5f5;
+        }
+        
+        .history-item.benign {
+            border-left-color: #51cf66;
+            background: #f0fff4;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="main-container">
+            <!-- Header -->
+            <div class="header">
+                <h1><i class="fas fa-shield-alt"></i> Ransomware Detection AI/ML Dashboard</h1>
+                <p>Advanced Machine Learning System for Real-Time Threat Detection</p>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard" type="button" role="tab">
+                        <i class="fas fa-tachometer-alt"></i> Dashboard
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="detection-tab" data-bs-toggle="tab" data-bs-target="#detection" type="button" role="tab">
+                        <i class="fas fa-search"></i> Real-Time Detection
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics" type="button" role="tab">
+                        <i class="fas fa-chart-line"></i> Analytics
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab">
+                        <i class="fas fa-history"></i> Detection History
+                    </button>
+                </li>
+            </ul>
+
+            <!-- Tab Content -->
+            <div class="tab-content" id="mainTabsContent">
+                <!-- Dashboard Tab -->
+                <div class="tab-pane fade show active" id="dashboard" role="tabpanel">
+                    <div class="row">
+                        <!-- System Status -->
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="fas fa-server"></i> System Status
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <div class="metric-card">
+                                                <div class="metric-value text-success" id="modelStatus">
+                                                    <i class="fas fa-check-circle"></i>
+                                                </div>
+                                                <div class="metric-label">Model Status</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="metric-card">
+                                                <div class="metric-value text-primary" id="totalDetections">
+                                                    0
+                                                </div>
+                                                <div class="metric-label">Total Detections</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-center mt-3">
+                                        <button class="btn btn-primary" onclick="trainModel()">
+                                            <i class="fas fa-cog"></i> Train Model
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dataset Statistics -->
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="fas fa-database"></i> Dataset Statistics
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <div class="metric-card">
+                                                <div class="metric-value text-info" id="totalSamples">
+                                                    -
+                                                </div>
+                                                <div class="metric-label">Total Samples</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="metric-card">
+                                                <div class="metric-value text-warning" id="features">
+                                                    -
+                                                </div>
+                                                <div class="metric-label">Features</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row mt-3">
+                                        <div class="col-6">
+                                            <div class="metric-card">
+                                                <div class="metric-value text-danger" id="ransomwareSamples">
+                                                    -
+                                                </div>
+                                                <div class="metric-label">Ransomware</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="metric-card">
+                                                <div class="metric-value text-success" id="benignSamples">
+                                                    -
+                                                </div>
+                                                <div class="metric-label">Benign</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Model Performance -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="fas fa-chart-bar"></i> Model Performance Metrics
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <div class="metric-card">
+                                                <div class="metric-value text-success" id="accuracy">
+                                                    -
+                                                </div>
+                                                <div class="metric-label">Accuracy</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="metric-card">
+                                                <div class="metric-value text-info" id="precision">
+                                                    -
+                                                </div>
+                                                <div class="metric-label">Precision</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="metric-card">
+                                                <div class="metric-value text-warning" id="recall">
+                                                    -
+                                                </div>
+                                                <div class="metric-label">Recall</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="metric-card">
+                                                <div class="metric-value text-primary" id="f1Score">
+                                                    -
+                                                </div>
+                                                <div class="metric-label">F1-Score</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Real-Time Detection Tab -->
+                <div class="tab-pane fade" id="detection" role="tabpanel">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="fas fa-search"></i> Real-Time Detection Interface
+                                </div>
+                                <div class="card-body">
+                                    <form id="detectionForm">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="feature-input-group">
+                                                    <label class="feature-label">File Access Count</label>
+                                                    <input type="number" class="form-control" id="file_access_count" value="50" min="0">
+                                                </div>
+                                                <div class="feature-input-group">
+                                                    <label class="feature-label">Entropy Change</label>
+                                                    <input type="number" class="form-control" id="entropy_change" value="0" step="0.1">
+                                                </div>
+                                                <div class="feature-input-group">
+                                                    <label class="feature-label">System Calls</label>
+                                                    <input type="number" class="form-control" id="system_calls" value="100" min="0">
+                                                </div>
+                                                <div class="feature-input-group">
+                                                    <label class="feature-label">Network Connections</label>
+                                                    <input type="number" class="form-control" id="network_connections" value="20" min="0">
+                                                </div>
+                                                <div class="feature-input-group">
+                                                    <label class="feature-label">File Modifications</label>
+                                                    <input type="number" class="form-control" id="file_modifications" value="30" min="0">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="feature-input-group">
+                                                    <label class="feature-label">CPU Usage (%)</label>
+                                                    <input type="number" class="form-control" id="cpu_usage" value="50" min="0" max="100" step="0.1">
+                                                </div>
+                                                <div class="feature-input-group">
+                                                    <label class="feature-label">Memory Usage (%)</label>
+                                                    <input type="number" class="form-control" id="memory_usage" value="50" min="0" max="100" step="0.1">
+                                                </div>
+                                                <div class="feature-input-group">
+                                                    <label class="feature-label">Disk I/O</label>
+                                                    <input type="number" class="form-control" id="disk_io" value="200" min="0">
+                                                </div>
+                                                <div class="feature-input-group">
+                                                    <label class="feature-label">Process Count</label>
+                                                    <input type="number" class="form-control" id="process_count" value="150" min="0">
+                                                </div>
+                                                <div class="feature-input-group">
+                                                    <label class="feature-label">Registry Changes</label>
+                                                    <input type="number" class="form-control" id="registry_changes" value="10" min="0">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-center mt-4">
+                                            <button type="submit" class="btn btn-primary btn-lg">
+                                                <i class="fas fa-search"></i> Analyze System Behavior
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="fas fa-exclamation-triangle"></i> Detection Result
+                                </div>
+                                <div class="card-body">
+                                    <div id="detectionResult" class="detection-result" style="display: none;">
+                                        <h3 id="resultTitle"></h3>
+                                        <p id="resultConfidence"></p>
+                                        <p id="resultRisk"></p>
+                                    </div>
+                                    <div id="noDetection" class="text-center text-muted">
+                                        <i class="fas fa-info-circle fa-3x mb-3"></i>
+                                        <p>Enter system metrics and click "Analyze" to get detection results</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analytics Tab -->
+                <div class="tab-pane fade" id="analytics" role="tabpanel">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="fas fa-chart-pie"></i> Feature Importance
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="featureImportanceChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="fas fa-chart-bar"></i> Confusion Matrix
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="confusionMatrixChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detection History Tab -->
+                <div class="tab-pane fade" id="history" role="tabpanel">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-history"></i> Recent Detection History
+                        </div>
+                        <div class="card-body">
+                            <div id="detectionHistory">
+                                <div class="text-center text-muted">
+                                    <i class="fas fa-clock fa-3x mb-3"></i>
+                                    <p>No detection history available yet</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Modal -->
+    <div class="loading" id="loadingModal">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-3">Processing...</p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

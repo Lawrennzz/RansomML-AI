@@ -21,47 +21,32 @@ wheels/
 *.egg
 MANIFEST
 
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
 # Jupyter Notebook
 .ipynb_checkpoints
 
-# Environment variables
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
+# VS Code
+.vscode/
 
-# IDE
-.vscode/settings.json
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Model files (optional - uncomment if you don't want to track trained models)
+# Model files (optional - you can include these if you want)
 # *.pkl
-# *.h5
-# *.joblib
 
 # Logs
 *.log
-logs/
 
-# Data files (optional - uncomment if you don't want to track datasets)
-# *.csv
-# *.json
-# *.xlsx
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+*.swp
+*.swo
 
 # Temporary files
 *.tmp

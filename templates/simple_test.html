@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Visualization Test</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        .chart-container {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4">🔍 Visualization Test</h1>
+        
+        <div class="text-center mb-4">
+            <button class="btn btn-primary btn-lg" onclick="loadCharts()">
+                <i class="fas fa-chart-bar"></i> Load Charts
+            </button>
+        </div>
+        
+        <div class="chart-container">
+            <h3>Feature Importance Chart</h3>
+            <canvas id="featureChart" width="400" height="200"></canvas>
+        </div>
+        
+        <div class="chart-container">
+            <h3>Model Performance</h3>
+            <div id="performanceInfo"></div>
+        </div>
+        
+        <div class="chart-container">
+            <h3>Debug Information</h3>
+            <div id="debugInfo"></div>
+        </div>
+    </div>
+
+    <script>
+        function loadCharts() {
+            console.log("Loading charts...");
+            document.getElementById('debugInfo').innerHTML = "Loading charts...";
+            
+            // First train the model
+            fetch('/api/train')
+                .then(response => response.json())
+                .then(data => {
+                    console.log("Train response:", data);
+                    document.getElementById('debugInfo').innerHTML += "<br>Model trained: " + data.success;
+                    
+                    if (data.success) {
+                        // Then get charts
+                        return fetch('/api/charts');
+                    } else {
+                        throw new Error("Training failed: " + data.message);
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log("Charts response:", data);
+                    document.getElementById('debugInfo').innerHTML += "<br>Charts loaded: " + data.success;
+                    
+                    if (data.success) {
+                        // Display performance info
+                        const perf = data.performance;
+                        document.getElementById('performanceInfo').innerHTML = `
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="card text-center">
+                                        <div class="card-body">
+                                            <h5 class="card-title">Accuracy</h5>
+                                            <h3 class="text-primary">${(perf.accuracy * 100).toFixed(2)}%</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card text-center">
+                                        <div class="card-body">
+                                            <h5 class="card-title">Precision</h5>
+                                            <h3 class="text-success">${(perf.precision * 100).toFixed(2)}%</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card text-center">
+                                        <div class="card-body">
+                                            <h5 class="card-title">Recall</h5>
+                                            <h3 class="text-warning">${(perf.recall * 100).toFixed(2)}%</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card text-center">
+                                        <div class="card-body">
+                                            <h5 class="card-title">F1-Score</h5>
+                                            <h3 class="text-info">${(perf.f1_score * 100).toFixed(2)}%</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        
+                        // Create feature importance chart
+                        const ctx = document.getElementById('featureChart').getContext('2d');
+                        const featureImportance = data.performance.feature_importance;
+                        const features = Object.keys(featureImportance);
+                        const importances = Object.values(featureImportance);
+                        
+                        // Sort by importance
+                        const sortedData = features.map((feature, index) => ({
+                            feature: feature,
+                            importance: importances[index]
+                        })).sort((a, b) => b.importance - a.importance);
+                        
+                        new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: sortedData.map(d => d.feature.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())),
+                                datasets: [{
+                                    label: 'Importance Score',
+                                    data: sortedData.map(d => d.importance),
+                                    backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                                    borderColor: 'rgba(54, 162, 235, 1)',
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                plugins: {
+                                    title: {
+                                        display: true,
+                                        text: 'Feature Importance for Ransomware Detection'
+                                    }
+                                },
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        title: {
+                                            display: true,
+                                            text: 'Importance Score'
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                        
+                        document.getElementById('debugInfo').innerHTML += "<br>✅ Charts created successfully!";
+                    } else {
+                        document.getElementById('debugInfo').innerHTML += "<br>❌ Chart creation failed: " + data.message;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('debugInfo').innerHTML += "<br>❌ Error: " + error.message;
+                });
+        }
+        
+        // Auto-load on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Simple test page loaded');
+            setTimeout(loadCharts, 1000);
+        });
+    </script>
+</body>
+</html>

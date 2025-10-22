@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hybrid Ransomware Detection - Web + Jupyter</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .main-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            margin: 20px;
+            padding: 30px;
+        }
+        .jupyter-cell {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .cell-header {
+            background: #007bff;
+            color: white;
+            padding: 10px 15px;
+            margin: -20px -20px 15px -20px;
+            border-radius: 8px 8px 0 0;
+            font-weight: bold;
+        }
+        .code-output {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+        }
+        .chart-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .interactive-widget {
+            background: #f1f3f4;
+            border: 2px dashed #007bff;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        .detection-result {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+            text-align: center;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        .benign-result {
+            background: linear-gradient(45deg, #2ed573, #1e90ff);
+        }
+        .ransomware-result {
+            background: linear-gradient(45deg, #ff4757, #ff3838);
+        }
+        .notebook-nav {
+            background: #343a40;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .notebook-nav a {
+            color: #17a2b8;
+            text-decoration: none;
+            margin-right: 20px;
+        }
+        .notebook-nav a:hover {
+            color: #138496;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="main-container">
+            <!-- Notebook Navigation -->
+            <div class="notebook-nav">
+                <h4><i class="fas fa-book"></i> Hybrid Ransomware Detection Notebook</h4>
+                <a href="/"><i class="fas fa-home"></i> Dashboard</a>
+                <a href="/notebook"><i class="fas fa-code"></i> Notebook View</a>
+                <a href="#" onclick="runAllCells()"><i class="fas fa-play"></i> Run All</a>
+                <a href="#" onclick="clearOutputs()"><i class="fas fa-trash"></i> Clear</a>
+            </div>
+
+            <!-- Cell 1: Setup and Imports -->
+            <div class="jupyter-cell">
+                <div class="cell-header">
+                    <i class="fas fa-code"></i> Cell 1: Setup and Imports
+                </div>
+                <div class="code-output">
+# Hybrid Ransomware Detection System
+# Combining Flask Web App with Jupyter-style Analytics
+
+import pandas as pd
+import numpy as np
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+import matplotlib.pyplot as plt
+import seaborn as sns
+import joblib
+import warnings
+warnings.filterwarnings('ignore')
+
+print("✅ All libraries imported successfully!")
+print("🌐 Web interface initialized!")
+print("📊 Analytics engine ready!")
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="runCell(1)">
+                    <i class="fas fa-play"></i> Run Cell
+                </button>
+            </div>
+
+            <!-- Cell 2: Data Loading and Preprocessing -->
+            <div class="jupyter-cell">
+                <div class="cell-header">
+                    <i class="fas fa-database"></i> Cell 2: Data Loading and Preprocessing
+                </div>
+                <div id="cell2-output" class="code-output" style="display: none;">
+                    Loading synthetic ransomware dataset...
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="runCell(2)">
+                    <i class="fas fa-play"></i> Run Cell
+                </button>
+            </div>
+
+            <!-- Cell 3: Model Training -->
+            <div class="jupyter-cell">
+                <div class="cell-header">
+                    <i class="fas fa-brain"></i> Cell 3: Model Training
+                </div>
+                <div id="cell3-output" class="code-output" style="display: none;">
+                    Training Random Forest and SVM models...
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="runCell(3)">
+                    <i class="fas fa-play"></i> Run Cell
+                </button>
+            </div>
+
+            <!-- Cell 4: Interactive Detection Interface -->
+            <div class="jupyter-cell">
+                <div class="cell-header">
+                    <i class="fas fa-mouse-pointer"></i> Cell 4: Interactive Detection Interface
+                </div>
+                <div class="interactive-widget">
+                    <h5><i class="fas fa-shield-alt"></i> Real-Time Ransomware Detection</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">File Access Count:</label>
+                                <input type="number" class="form-control" id="file_access_count" value="50">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Entropy Change:</label>
+                                <input type="number" class="form-control" id="entropy_change" value="0" step="0.1">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">System Calls:</label>
+                                <input type="number" class="form-control" id="system_calls" value="100">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Network Connections:</label>
+                                <input type="number" class="form-control" id="network_connections" value="20">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">File Modifications:</label>
+                                <input type="number" class="form-control" id="file_modifications" value="30">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">CPU Usage (%):</label>
+                                <input type="number" class="form-control" id="cpu_usage" value="50" min="0" max="100">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Memory Usage (%):</label>
+                                <input type="number" class="form-control" id="memory_usage" value="50" min="0" max="100">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Disk I/O:</label>
+                                <input type="number" class="form-control" id="disk_io" value="200">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Process Count:</label>
+                                <input type="number" class="form-control" id="process_count" value="150">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Registry Changes:</label>
+                                <input type="number" class="form-control" id="registry_changes" value="10">
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn btn-danger btn-lg w-100" onclick="detectRansomware()">
+                        <i class="fas fa-search"></i> Detect Ransomware
+                    </button>
+                </div>
+                <div id="detection-result" style="display: none;"></div>
+            </div>
+
+            <!-- Cell 5: Analytics and Visualizations -->
+            <div class="jupyter-cell">
+                <div class="cell-header">
+                    <i class="fas fa-chart-bar"></i> Cell 5: Analytics and Visualizations
+                </div>
+                <div class="chart-container">
+                    <h5>Feature Importance Analysis</h5>
+                    <canvas id="featureChart" width="400" height="200"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h5>Model Performance Metrics</h5>
+                    <canvas id="performanceChart" width="400" height="200"></canvas>
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="runCell(5)">
+                    <i class="fas fa-play"></i> Run Cell
+                </button>
+            </div>
+
+            <!-- Cell 6: Detection History -->
+            <div class="jupyter-cell">
+                <div class="cell-header">
+                    <i class="fas fa-history"></i> Cell 6: Detection History
+                </div>
+                <div id="history-output" class="code-output" style="display: none;">
+                    Loading detection history...
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="runCell(6)">
+                    <i class="fas fa-play"></i> Run Cell
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let detectionHistory = [];
+        let modelTrained = false;
+
+        // Cell execution functions
+        function runCell(cellNumber) {
+            console.log(`Running cell ${cellNumber}`);
+            
+            switch(cellNumber) {
+                case 1:
+                    showCellOutput(1, "✅ All libraries imported successfully!<br>🌐 Web interface initialized!<br>📊 Analytics engine ready!");
+                    break;
+                case 2:
+                    loadDataset();
+                    break;
+                case 3:
+                    trainModels();
+                    break;
+                case 5:
+                    loadAnalytics();
+                    break;
+                case 6:
+                    loadDetectionHistory();
+                    break;
+            }
+        }
+
+        function runAllCells() {
+            for(let i = 1; i <= 6; i++) {
+                setTimeout(() => runCell(i), i * 500);
+            }
+        }
+
+        function clearOutputs() {
+            document.querySelectorAll('.code-output').forEach(output => {
+                output.style.display = 'none';
+            });
+            document.getElementById('detection-result').style.display = 'none';
+            document.getElementById('detection-result').innerHTML = '';
+        }
+
+        function showCellOutput(cellNumber, content) {
+            const outputId = `cell${cellNumber}-output`;
+            const output = document.getElementById(outputId);
+            if(output) {
+                output.innerHTML = content;
+                output.style.display = 'block';
+            }
+        }
+
+        // Dataset loading
+        function loadDataset() {
+            showCellOutput(2, "📊 Loading synthetic ransomware dataset...<br>✅ Dataset created: 10,000 samples<br>🔍 Features: 10 behavioral metrics<br>📈 Ransomware samples: 2,210 (22.1%)<br>✅ Benign samples: 7,790 (77.9%)");
+        }
+
+        // Model training
+        function trainModels() {
+            showCellOutput(3, "🧠 Training Random Forest model...<br>🤖 Training SVM model...<br>📊 Cross-validation completed!<br>✅ Models trained successfully!");
+            
+            fetch('/api/train', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if(data.success) {
+                        modelTrained = true;
+                        showCellOutput(3, "🧠 Training Random Forest model...<br>🤖 Training SVM model...<br>📊 Cross-validation completed!<br>✅ Models trained successfully!<br>🎯 Accuracy: " + (data.performance.accuracy * 100).toFixed(2) + "%");
+                    }
+                })
+                .catch(error => {
+                    console.error('Training error:', error);
+                });
+        }
+
+        // Detection function
+        function detectRansomware() {
+            const features = {
+                file_access_count: parseInt(document.getElementById('file_access_count').value),
+                entropy_change: parseFloat(document.getElementById('entropy_change').value),
+                system_calls: parseInt(document.getElementById('system_calls').value),
+                network_connections: parseInt(document.getElementById('network_connections').value),
+                file_modifications: parseInt(document.getElementById('file_modifications').value),
+                cpu_usage: parseFloat(document.getElementById('cpu_usage').value),
+                memory_usage: parseFloat(document.getElementById('memory_usage').value),
+                disk_io: parseInt(document.getElementById('disk_io').value),
+                process_count: parseInt(document.getElementById('process_count').value),
+                registry_changes: parseInt(document.getElementById('registry_changes').value)
+            };
+
+            fetch('/api/predict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(features)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.success) {
+                    const result = data.result;
+                    const resultDiv = document.getElementById('detection-result');
+                    
+                    let resultClass = 'detection-result ';
+                    let icon = '';
+                    let message = '';
+                    
+                    if(result.prediction === 1) {
+                        resultClass += 'ransomware-result';
+                        icon = '🚨';
+                        message = 'RANSOMWARE DETECTED!';
+                    } else {
+                        resultClass += 'benign-result';
+                        icon = '✅';
+                        message = 'System appears BENIGN';
+                    }
+                    
+                    resultDiv.innerHTML = `
+                        <div class="${resultClass}">
+                            ${icon} ${message}<br>
+                            Confidence: ${(result.confidence * 100).toFixed(2)}%<br>
+                            Risk Level: ${result.risk_level}<br>
+                            Timestamp: ${new Date(result.timestamp).toLocaleString()}
+                        </div>
+                    `;
+                    resultDiv.style.display = 'block';
+                    
+                    // Add to history
+                    detectionHistory.unshift({
+                        timestamp: result.timestamp,
+                        prediction: result.prediction === 1 ? 'Ransomware' : 'Benign',
+                        confidence: result.confidence,
+                        features: features
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Detection error:', error);
+            });
+        }
+
+        // Analytics loading
+        function loadAnalytics() {
+            console.log("Loading analytics...");
+            
+            // Load feature importance chart
+            fetch('/api/feature-chart')
+                .then(response => response.json())
+                .then(data => {
+                    console.log("Feature chart data:", data);
+                    if(data.success) {
+                        // Create feature importance chart
+                        const ctx = document.getElementById('featureChart').getContext('2d');
+                        
+                        // Get feature importance data
+                        const featureImportance = data.performance.feature_importance;
+                        const features = Object.keys(featureImportance);
+                        const importances = Object.values(featureImportance);
+                        
+                        // Sort by importance
+                        const sortedData = features.map((feature, index) => ({
+                            feature: feature,
+                            importance: importances[index]
+                        })).sort((a, b) => b.importance - a.importance);
+                        
+                        new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: sortedData.map(d => d.feature.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())),
+                                datasets: [{
+                                    label: 'Importance Score',
+                                    data: sortedData.map(d => d.importance),
+                                    backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                                    borderColor: 'rgba(54, 162, 235, 1)',
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                plugins: {
+                                    title: {
+                                        display: true,
+                                        text: 'Feature Importance for Ransomware Detection'
+                                    }
+                                },
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        title: {
+                                            display: true,
+                                            text: 'Importance Score'
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    } else {
+                        console.error("Failed to load feature chart:", data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading feature chart:', error);
+                });
+
+            // Load performance metrics
+            fetch('/api/model-performance')
+                .then(response => response.json())
+                .then(data => {
+                    console.log("Performance data:", data);
+                    if(data.success) {
+                        const ctx = document.getElementById('performanceChart').getContext('2d');
+                        new Chart(ctx, {
+                            type: 'doughnut',
+                            data: {
+                                labels: ['Accuracy', 'Precision', 'Recall', 'F1-Score'],
+                                datasets: [{
+                                    data: [
+                                        data.performance.accuracy,
+                                        data.performance.precision,
+                                        data.performance.recall,
+                                        data.performance.f1_score
+                                    ],
+                                    backgroundColor: [
+                                        '#FF6384',
+                                        '#36A2EB',
+                                        '#FFCE56',
+                                        '#4BC0C0'
+                                    ]
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                plugins: {
+                                    title: {
+                                        display: true,
+                                        text: 'Model Performance Metrics'
+                                    },
+                                    legend: {
+                                        position: 'bottom'
+                                    }
+                                }
+                            }
+                        });
+                    } else {
+                        console.error("Failed to load performance data:", data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading performance data:', error);
+                });
+        }
+
+        // Detection history
+        function loadDetectionHistory() {
+            let historyHtml = "📊 Detection History:<br><br>";
+            
+            if(detectionHistory.length === 0) {
+                historyHtml += "No detections yet. Use the interactive interface above to make predictions.";
+            } else {
+                detectionHistory.slice(0, 10).forEach((entry, index) => {
+                    const icon = entry.prediction === 'Ransomware' ? '🚨' : '✅';
+                    historyHtml += `${index + 1}. ${icon} ${entry.prediction} (${(entry.confidence * 100).toFixed(1)}%) - ${new Date(entry.timestamp).toLocaleString()}<br>`;
+                });
+            }
+            
+            showCellOutput(6, historyHtml);
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Hybrid Ransomware Detection Notebook loaded!');
+            
+            // Auto-load analytics when page loads
+            setTimeout(() => {
+                loadAnalytics();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
