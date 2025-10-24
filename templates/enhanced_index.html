@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Ransomware Detection System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .hero-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 60px 0;
+        }
+        .feature-card {
+            transition: transform 0.3s ease;
+            border: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+        .metric-card {
+            background: linear-gradient(45deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 10px 0;
+        }
+        .prediction-result {
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .risk-high { background-color: #ff6b6b; color: white; }
+        .risk-medium { background-color: #ffa726; color: white; }
+        .risk-low { background-color: #66bb6a; color: white; }
+        .feature-input {
+            margin-bottom: 15px;
+        }
+        .loading {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <div class="hero-section">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <h1 class="display-4 fw-bold">Enhanced Ransomware Detection System</h1>
+                    <p class="lead">AI-powered ransomware detection using Kaggle dataset integration with advanced behavioral analysis</p>
+                    <div class="d-flex gap-3">
+                        <button class="btn btn-light btn-lg" onclick="trainModels()">
+                            <i class="fas fa-brain me-2"></i>Train Models
+                        </button>
+                        <button class="btn btn-outline-light btn-lg" onclick="showStats()">
+                            <i class="fas fa-chart-bar me-2"></i>View Statistics
+                        </button>
+                    </div>
+                </div>
+                <div class="col-lg-4 text-center">
+                    <i class="fas fa-shield-alt" style="font-size: 8rem; opacity: 0.3;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container my-5">
+        <!-- Model Performance -->
+        <div class="row mb-5">
+            <div class="col-12">
+                <h2 class="text-center mb-4">Model Performance</h2>
+                <div class="row" id="performance-metrics">
+                    <div class="col-md-3">
+                        <div class="metric-card text-center">
+                            <h3 id="accuracy">--</h3>
+                            <p>Accuracy</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card text-center">
+                            <h3 id="precision">--</h3>
+                            <p>Precision</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card text-center">
+                            <h3 id="recall">--</h3>
+                            <p>Recall</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card text-center">
+                            <h3 id="f1-score">--</h3>
+                            <p>F1-Score</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detection Interface -->
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card feature-card">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0"><i class="fas fa-search me-2"></i>Ransomware Detection</h4>
+                    </div>
+                    <div class="card-body">
+                        <form id="detection-form">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="feature-input">
+                                        <label class="form-label">File Access Count</label>
+                                        <input type="number" class="form-control" name="file_access_count" value="60" min="0">
+                                        <small class="text-muted">Number of file access operations</small>
+                                    </div>
+                                    <div class="feature-input">
+                                        <label class="form-label">File Modifications</label>
+                                        <input type="number" class="form-control" name="file_modifications" value="40" min="0">
+                                        <small class="text-muted">Number of file modification operations</small>
+                                    </div>
+                                    <div class="feature-input">
+                                        <label class="form-label">File Encryptions</label>
+                                        <input type="number" class="form-control" name="file_encryptions" value="2" min="0">
+                                        <small class="text-muted">Number of file encryption operations</small>
+                                    </div>
+                                    <div class="feature-input">
+                                        <label class="form-label">System Calls</label>
+                                        <input type="number" class="form-control" name="system_calls" value="120" min="0">
+                                        <small class="text-muted">Number of system calls made</small>
+                                    </div>
+                                    <div class="feature-input">
+                                        <label class="form-label">Process Count</label>
+                                        <input type="number" class="form-control" name="process_count" value="180" min="0">
+                                        <small class="text-muted">Number of running processes</small>
+                                    </div>
+                                    <div class="feature-input">
+                                        <label class="form-label">Network Connections</label>
+                                        <input type="number" class="form-control" name="network_connections" value="25" min="0">
+                                        <small class="text-muted">Number of network connections</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="feature-input">
+                                        <label class="form-label">CPU Usage (%)</label>
+                                        <input type="number" class="form-control" name="cpu_usage" value="50" min="0" max="100">
+                                        <small class="text-muted">CPU usage percentage</small>
+                                    </div>
+                                    <div class="feature-input">
+                                        <label class="form-label">Memory Usage (%)</label>
+                                        <input type="number" class="form-control" name="memory_usage" value="50" min="0" max="100">
+                                        <small class="text-muted">Memory usage percentage</small>
+                                    </div>
+                                    <div class="feature-input">
+                                        <label class="form-label">Disk I/O Read</label>
+                                        <input type="number" class="form-control" name="disk_io_read" value="300" min="0">
+                                        <small class="text-muted">Disk read operations</small>
+                                    </div>
+                                    <div class="feature-input">
+                                        <label class="form-label">Disk I/O Write</label>
+                                        <input type="number" class="form-control" name="disk_io_write" value="250" min="0">
+                                        <small class="text-muted">Disk write operations</small>
+                                    </div>
+                                    <div class="feature-input">
+                                        <label class="form-label">Registry Changes</label>
+                                        <input type="number" class="form-control" name="registry_changes" value="12" min="0">
+                                        <small class="text-muted">Number of registry modifications</small>
+                                    </div>
+                                    <div class="feature-input">
+                                        <label class="form-label">Entropy Change</label>
+                                        <input type="number" class="form-control" name="entropy_change" value="0" step="0.1">
+                                        <small class="text-muted">Change in file entropy</small>
+                                    </div>
+                                    <div class="feature-input">
+                                        <label class="form-label">Crypto Operations</label>
+                                        <input type="number" class="form-control" name="crypto_operations" value="8" min="0">
+                                        <small class="text-muted">Number of cryptographic operations</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-center mt-4">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-search me-2"></i>Detect Ransomware
+                                </button>
+                                <button type="button" class="btn btn-secondary btn-lg ms-2" onclick="generateRandomSample()">
+                                    <i class="fas fa-random me-2"></i>Random Sample
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <!-- Loading indicator -->
+                        <div class="loading text-center mt-3">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Analyzing behavior patterns...</p>
+                        </div>
+                        
+                        <!-- Prediction Result -->
+                        <div id="prediction-result" class="prediction-result" style="display: none;">
+                            <h5>Detection Result</h5>
+                            <div id="result-content"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <!-- Dataset Statistics -->
+                <div class="card feature-card mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="fas fa-database me-2"></i>Dataset Statistics</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="dataset-stats">
+                            <p class="text-center">Click "View Statistics" to load data</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Feature Importance -->
+                <div class="card feature-card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Feature Importance</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="feature-importance">
+                            <p class="text-center">Train models to see feature importance</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Detection History -->
+        <div class="row mt-5">
+            <div class="col-12">
+                <div class="card feature-card">
+                    <div class="card-header bg-warning text-dark">
+                        <h4 class="mb-0"><i class="fas fa-history me-2"></i>Detection History</h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="detection-history">
+                            <p class="text-center">No detections yet</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Global variables
+        let modelPerformance = null;
+        let detectionHistory = [];
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            loadModelPerformance();
+            loadDetectionHistory();
+        });
+
+        // Train models
+        async function trainModels() {
+            try {
+                const response = await fetch('/api/train', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    modelPerformance = data.performance;
+                    updatePerformanceMetrics();
+                    updateFeatureImportance();
+                    showAlert('Models trained successfully!', 'success');
+                } else {
+                    showAlert('Training failed: ' + data.message, 'danger');
+                }
+            } catch (error) {
+                showAlert('Error training models: ' + error.message, 'danger');
+            }
+        }
+
+        // Load model performance
+        async function loadModelPerformance() {
+            try {
+                const response = await fetch('/api/model-performance');
+                const data = await response.json();
+                
+                if (data.success) {
+                    modelPerformance = data.performance;
+                    updatePerformanceMetrics();
+                    updateFeatureImportance();
+                }
+            } catch (error) {
+                console.error('Error loading model performance:', error);
+            }
+        }
+
+        // Update performance metrics
+        function updatePerformanceMetrics() {
+            if (modelPerformance) {
+                document.getElementById('accuracy').textContent = (modelPerformance.accuracy * 100).toFixed(1) + '%';
+                document.getElementById('precision').textContent = (modelPerformance.precision * 100).toFixed(1) + '%';
+                document.getElementById('recall').textContent = (modelPerformance.recall * 100).toFixed(1) + '%';
+                document.getElementById('f1-score').textContent = (modelPerformance.f1_score * 100).toFixed(1) + '%';
+            }
+        }
+
+        // Update feature importance
+        function updateFeatureImportance() {
+            if (modelPerformance && modelPerformance.feature_importance) {
+                const importanceDiv = document.getElementById('feature-importance');
+                const features = Object.entries(modelPerformance.feature_importance)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 5);
+                
+                let html = '<div class="list-group">';
+                features.forEach(([feature, importance]) => {
+                    html += `
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            ${feature.replace(/_/g, ' ')}
+                            <span class="badge bg-primary rounded-pill">${(importance * 100).toFixed(1)}%</span>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                
+                importanceDiv.innerHTML = html;
+            }
+        }
+
+        // Show dataset statistics
+        async function showStats() {
+            try {
+                const response = await fetch('/api/dataset-stats');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const stats = data.stats;
+                    const statsDiv = document.getElementById('dataset-stats');
+                    
+                    statsDiv.innerHTML = `
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <h4>${stats.total_samples.toLocaleString()}</h4>
+                                <p class="mb-0">Total Samples</p>
+                            </div>
+                            <div class="col-6">
+                                <h4>${stats.features}</h4>
+                                <p class="mb-0">Features</p>
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <h5 class="text-danger">${stats.ransomware_samples.toLocaleString()}</h5>
+                                <p class="mb-0">Ransomware</p>
+                            </div>
+                            <div class="col-6">
+                                <h5 class="text-success">${stats.benign_samples.toLocaleString()}</h5>
+                                <p class="mb-0">Benign</p>
+                            </div>
+                        </div>
+                        <hr>
+                        <p class="text-center mb-0">
+                            <small class="text-muted">Model: ${stats.model_type}</small>
+                        </p>
+                    `;
+                }
+            } catch (error) {
+                showAlert('Error loading statistics: ' + error.message, 'danger');
+            }
+        }
+
+        // Load detection history
+        async function loadDetectionHistory() {
+            try {
+                const response = await fetch('/api/detection-history');
+                const data = await response.json();
+                
+                if (data.success) {
+                    detectionHistory = data.history;
+                    updateDetectionHistoryDisplay();
+                }
+            } catch (error) {
+                console.error('Error loading detection history:', error);
+            }
+        }
+
+        // Update detection history display
+        function updateDetectionHistoryDisplay() {
+            const historyDiv = document.getElementById('detection-history');
+            
+            if (detectionHistory.length === 0) {
+                historyDiv.innerHTML = '<p class="text-center">No detections yet</p>';
+                return;
+            }
+            
+            let html = '<div class="table-responsive"><table class="table table-sm">';
+            html += '<thead><tr><th>Time</th><th>Risk</th><th>Confidence</th><th>Result</th></tr></thead><tbody>';
+            
+            detectionHistory.slice(-10).reverse().forEach(detection => {
+                const result = detection.result;
+                const riskClass = `risk-${result.risk_level.toLowerCase()}`;
+                
+                html += `
+                    <tr>
+                        <td>${new Date(result.timestamp).toLocaleTimeString()}</td>
+                        <td><span class="badge ${riskClass}">${result.risk_level}</span></td>
+                        <td>${(result.confidence * 100).toFixed(1)}%</td>
+                        <td>${result.prediction ? 'Ransomware' : 'Benign'}</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table></div>';
+            historyDiv.innerHTML = html;
+        }
+
+        // Handle form submission
+        document.getElementById('detection-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const features = {};
+            
+            for (let [key, value] of formData.entries()) {
+                features[key] = parseFloat(value);
+            }
+            
+            // Show loading
+            document.querySelector('.loading').style.display = 'block';
+            document.getElementById('prediction-result').style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(features)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayPredictionResult(data.result);
+                    loadDetectionHistory(); // Refresh history
+                } else {
+                    showAlert('Prediction failed: ' + data.message, 'danger');
+                }
+            } catch (error) {
+                showAlert('Error making prediction: ' + error.message, 'danger');
+            } finally {
+                document.querySelector('.loading').style.display = 'none';
+            }
+        });
+
+        // Display prediction result
+        function displayPredictionResult(result) {
+            const resultDiv = document.getElementById('prediction-result');
+            const contentDiv = document.getElementById('result-content');
+            
+            const riskClass = `risk-${result.risk_level.toLowerCase()}`;
+            
+            contentDiv.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Prediction: <span class="badge ${riskClass} fs-6">${result.prediction ? 'RANSOMWARE DETECTED' : 'BENIGN'}</span></h6>
+                        <p><strong>Risk Level:</strong> ${result.risk_level}</p>
+                        <p><strong>Confidence:</strong> ${(result.confidence * 100).toFixed(1)}%</p>
+                        <p><strong>Model:</strong> ${result.model_type}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Probabilities:</h6>
+                        <div class="progress mb-2">
+                            <div class="progress-bar bg-success" style="width: ${result.benign_probability * 100}%">
+                                Benign: ${(result.benign_probability * 100).toFixed(1)}%
+                            </div>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar bg-danger" style="width: ${result.ransomware_probability * 100}%">
+                                Ransomware: ${(result.ransomware_probability * 100).toFixed(1)}%
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            resultDiv.style.display = 'block';
+            resultDiv.className = `prediction-result ${riskClass}`;
+        }
+
+        // Generate random sample
+        function generateRandomSample() {
+            const form = document.getElementById('detection-form');
+            const inputs = form.querySelectorAll('input[type="number"]');
+            
+            inputs.forEach(input => {
+                const name = input.name;
+                let value;
+                
+                switch (name) {
+                    case 'file_access_count':
+                        value = Math.floor(Math.random() * 200);
+                        break;
+                    case 'file_modifications':
+                        value = Math.floor(Math.random() * 150);
+                        break;
+                    case 'file_encryptions':
+                        value = Math.floor(Math.random() * 10);
+                        break;
+                    case 'system_calls':
+                        value = Math.floor(Math.random() * 300);
+                        break;
+                    case 'process_count':
+                        value = Math.floor(Math.random() * 300);
+                        break;
+                    case 'network_connections':
+                        value = Math.floor(Math.random() * 50);
+                        break;
+                    case 'cpu_usage':
+                        value = Math.floor(Math.random() * 100);
+                        break;
+                    case 'memory_usage':
+                        value = Math.floor(Math.random() * 100);
+                        break;
+                    case 'disk_io_read':
+                        value = Math.floor(Math.random() * 500);
+                        break;
+                    case 'disk_io_write':
+                        value = Math.floor(Math.random() * 500);
+                        break;
+                    case 'registry_changes':
+                        value = Math.floor(Math.random() * 30);
+                        break;
+                    case 'entropy_change':
+                        value = (Math.random() - 0.5) * 10;
+                        break;
+                    case 'crypto_operations':
+                        value = Math.floor(Math.random() * 20);
+                        break;
+                    default:
+                        value = Math.floor(Math.random() * 100);
+                }
+                
+                input.value = value;
+            });
+        }
+
+        // Show alert
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.body.insertBefore(alertDiv, document.body.firstChild);
+            
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.parentNode.removeChild(alertDiv);
+                }
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
