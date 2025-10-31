@@ -209,6 +209,158 @@ response = session.post('http://localhost:5000/api/predict', json=data)
 print(response.json())
 ```
 
+### **🧪 Testing Real-Time Behavior Data**
+
+#### **Via Web UI:**
+1. **Login** with a role that has `monitor_system_behavior` permission (Cybersecurity Professional)
+2. Navigate to **"Real-Time"** section in the navbar
+3. Enter behavioral data as JSON in the textarea
+4. Click **"Classify Real-Time"** button
+
+#### **Behavioral Data Format (JSON):**
+The system accepts behavioral indicators that map to PE features:
+
+```json
+{
+  "file_access_count": 100,
+  "file_modifications": 50,
+  "system_calls": 25,
+  "directory_access": 15,
+  "crypto_operations": 2,
+  "process_count": 8,
+  "registry_changes": 5,
+  "memory_usage": 2048000,
+  "dll_characteristics": 512,
+  "debug_info": 1024
+}
+```
+
+#### **Example Test Cases:**
+
+**Test Case 1: Benign Behavior (Normal Activity)**
+```json
+{
+  "file_access_count": 50,
+  "file_modifications": 10,
+  "system_calls": 15,
+  "directory_access": 8,
+  "crypto_operations": 0,
+  "process_count": 5,
+  "registry_changes": 2,
+  "memory_usage": 1048576,
+  "dll_characteristics": 256,
+  "debug_info": 512
+}
+```
+
+**Test Case 2: Suspicious Behavior (Potential Ransomware)**
+```json
+{
+  "file_access_count": 500,
+  "file_modifications": 200,
+  "system_calls": 100,
+  "directory_access": 50,
+  "crypto_operations": 5,
+  "process_count": 20,
+  "registry_changes": 15,
+  "memory_usage": 4194304,
+  "dll_characteristics": 4096,
+  "debug_info": 2048
+}
+```
+
+**Test Case 3: High-Risk Behavior (Likely Ransomware)**
+```json
+{
+  "file_access_count": 1000,
+  "file_modifications": 500,
+  "system_calls": 200,
+  "directory_access": 100,
+  "crypto_operations": 10,
+  "process_count": 30,
+  "registry_changes": 25,
+  "memory_usage": 8388608,
+  "dll_characteristics": 8192,
+  "debug_info": 4096
+}
+```
+
+#### **Via API:**
+```python
+import requests
+import json
+
+# Create session and login
+session = requests.Session()
+login_data = {
+    'email': 'cyber_pro@example.com',
+    'password': 'cyber123'
+}
+session.post('http://localhost:5000/login', json=login_data)
+
+# Test real-time behavior data
+behavioral_data = {
+    "file_access_count": 500,
+    "file_modifications": 200,
+    "crypto_operations": 5,
+    "system_calls": 100,
+    "directory_access": 50,
+    "process_count": 20,
+    "registry_changes": 15,
+    "memory_usage": 4194304,
+    "dll_characteristics": 4096,
+    "debug_info": 2048
+}
+
+response = session.post(
+    'http://localhost:5000/api/classify-realtime',
+    json=behavioral_data
+)
+result = response.json()
+
+print("Prediction:", result['result']['prediction'])
+print("Confidence:", result['result']['confidence'])
+print("Threat Classification:", result['threat_classification'])
+print("Recommendation:", result['recommendation'])
+print("Behavioral Indicators:", result['behavioral_indicators'])
+```
+
+#### **Expected Response:**
+```json
+{
+  "success": true,
+  "result": {
+    "prediction": 1,
+    "confidence": 0.85,
+    "benign_probability": 0.15,
+    "ransomware_probability": 0.85,
+    "risk_level": "HIGH",
+    "model_type": "rf"
+  },
+  "behavioral_indicators": {
+    "file_modifications": 700,
+    "system_calls": 100,
+    "crypto_operations": 5,
+    "suspicious_activity_score": 0.8
+  },
+  "threat_classification": "High-Risk Crypto Ransomware",
+  "recommendation": "IMMEDIATE_ACTION"
+}
+```
+
+#### **Behavioral Data Mapping:**
+The system automatically maps behavioral indicators to PE features:
+- `file_access_count` → `ExportSize`
+- `file_modifications` → `ResourceSize`
+- `system_calls` → `NumberOfSections`
+- `directory_access` → `DebugRVA`
+- `crypto_operations` → `BitcoinAddresses`
+- `process_count` → `Machine`
+- `registry_changes` → `IatVRA`
+- `memory_usage` → `SizeOfStackReserve`
+- `dll_characteristics` → `DllCharacteristics`
+- `debug_info` → `DebugSize`
+
 ---
 
 ## 📚 **Learning Path**
