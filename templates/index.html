@@ -532,7 +532,7 @@
                     ctx.textAlign = 'center';
                     ctx.fillText('Feature Importance not available', canvas.width / 2, canvas.height / 2 - 10);
                     ctx.fillText('for ' + (perf.model_type || 'this model type'), canvas.width / 2, canvas.height / 2 + 10);
-                    ctx.fillText('(Only Random Forest supports this)', canvas.width / 2, canvas.height / 2 + 30);
+                    ctx.fillText('(Calculating feature importance...)', canvas.width / 2, canvas.height / 2 + 30);
                     return;
                 }
                 

@@ -18,6 +18,7 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+from sklearn.inspection import permutation_importance
 import warnings
 
 warnings.filterwarnings('ignore')
@@ -217,16 +218,36 @@ class RansomwareDetector:
         # Calculate training time
         training_time = time.time() - training_start_time
         
+        # Calculate feature importance
+        feature_importance_dict = None
+        try:
+            # For Random Forest, use built-in feature_importances_
+            if hasattr(self.model, 'feature_importances_') and not callable(getattr(self.model, 'feature_importances_', None)):
+                feature_importance_dict = dict(zip(self.feature_columns, self.model.feature_importances_.tolist()))
+            else:
+                # For other models (SVM, Neural Networks, CNN-LSTM), use permutation importance
+                # This works with any model but takes longer to compute
+                print(f"Calculating permutation importance for {chosen} model...")
+                perm_importance = permutation_importance(
+                    self.model, X_test_scaled, y_test,
+                    n_repeats=10,  # Number of times to permute each feature
+                    random_state=42,
+                    n_jobs=-1  # Use all available cores
+                )
+                # Use mean importance scores
+                feature_importance_dict = dict(zip(self.feature_columns, perm_importance.importances_mean.tolist()))
+                print("Permutation importance calculation complete.")
+        except Exception as e:
+            print(f"Warning: Could not calculate feature importance: {str(e)}")
+            feature_importance_dict = None
+        
         self.model_performance = {
             'accuracy': float(accuracy_score(y_test, y_pred)),
             'precision': float(precision_score(y_test, y_pred, zero_division=0)),
             'recall': float(recall_score(y_test, y_pred, zero_division=0)),
             'f1_score': float(f1_score(y_test, y_pred, zero_division=0)),
             'confusion_matrix': confusion_matrix(y_test, y_pred).tolist(),
-            'feature_importance': (
-                dict(zip(self.feature_columns, self.model.feature_importances_.tolist()))
-                if hasattr(self.model, 'feature_importances_') and not callable(getattr(self.model, 'feature_importances_', None)) else None
-            ),
+            'feature_importance': feature_importance_dict,
             'num_features': len(self.feature_columns),
             'num_samples': int(len(df)),
             'model_type': self.model_type,
