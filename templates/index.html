@@ -105,13 +105,18 @@
             <div class="card-body">
                 <div class="d-flex align-items-center gap-2 mb-3">
                     <select id="model-type" class="form-select" style="max-width:220px">
-                        <option value="rf" selected>Random Forest</option>
-                        <option value="svm">Support Vector Machine (SVM)</option>
-                        <option value="nn">Neural Networks</option>
-                        <option value="cnn-lstm">CNN-LSTM</option>
+                        <option value="rf" selected>Random Forest (~30-60s)</option>
+                        <option value="svm">SVM (~2-5 min)</option>
+                        <option value="nn">Neural Networks (~1-3 min)</option>
+                        <option value="cnn-lstm">CNN-LSTM (~3-8 min)</option>
                     </select>
                     <button id="btn-train" class="btn btn-primary">Train model</button>
                     <div id="train-status" class="small text-muted"></div>
+                </div>
+                <div class="alert alert-info small mb-3">
+                    <strong>Training Time Estimates:</strong> Random Forest trains fastest (~30-60 seconds). 
+                    Other models take longer: SVM (2-5 min), Neural Networks (1-3 min), CNN-LSTM (3-8 min).
+                    Times may vary based on your system performance.
                 </div>
                 
                 <!-- Training Performance Metrics -->
@@ -141,6 +146,11 @@
                                 <div class="text-muted small">F1-Score</div>
                                 <div id="train-f1" class="fs-4 fw-bold">–</div>
                             </div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <div class="text-muted small">
+                            <strong>Training Time:</strong> <span id="train-time">–</span>
                         </div>
                     </div>
                 </div>
@@ -370,11 +380,24 @@
                         const precEl = document.getElementById('train-precision');
                         const recEl = document.getElementById('train-recall');
                         const f1El = document.getElementById('train-f1');
+                        const timeEl = document.getElementById('train-time');
                         
                         if (accEl) accEl.textContent = (perf.accuracy ?? 0).toFixed(4);
                         if (precEl) precEl.textContent = (perf.precision ?? 0).toFixed(4);
                         if (recEl) recEl.textContent = (perf.recall ?? 0).toFixed(4);
                         if (f1El) f1El.textContent = (perf.f1_score ?? 0).toFixed(4);
+                        
+                        // Display training time
+                        if (timeEl && perf.training_time_seconds) {
+                            const timeSec = perf.training_time_seconds;
+                            if (timeSec < 60) {
+                                timeEl.textContent = `${timeSec.toFixed(2)} seconds`;
+                            } else {
+                                const minutes = Math.floor(timeSec / 60);
+                                const seconds = (timeSec % 60).toFixed(0);
+                                timeEl.textContent = `${minutes} minute${minutes > 1 ? 's' : ''} ${seconds} second${seconds != 1 ? 's' : ''}`;
+                            }
+                        }
                     }
                     
                     // Render visualizations in train model section

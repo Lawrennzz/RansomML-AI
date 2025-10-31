@@ -11,6 +11,7 @@ import numpy as np
 from flask import Flask, render_template, request, jsonify
 from werkzeug.utils import secure_filename
 import io
+import time
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
@@ -160,6 +161,9 @@ class RansomwareDetector:
         chosen = (model_type or self.model_type or 'rf').lower()
         self.model_type = chosen
 
+        # Start training timer
+        training_start_time = time.time()
+
         if chosen == 'rf':
             self.model = RandomForestClassifier(
                 n_estimators=300,
@@ -209,6 +213,10 @@ class RansomwareDetector:
             y_pred = (y_prob >= 0.5).astype(int)
         else:
             raise ValueError(f"Unsupported model_type: {chosen}")
+        
+        # Calculate training time
+        training_time = time.time() - training_start_time
+        
         self.model_performance = {
             'accuracy': float(accuracy_score(y_test, y_pred)),
             'precision': float(precision_score(y_test, y_pred, zero_division=0)),
@@ -222,6 +230,7 @@ class RansomwareDetector:
             'num_features': len(self.feature_columns),
             'num_samples': int(len(df)),
             'model_type': self.model_type,
+            'training_time_seconds': float(training_time),
         }
         return self.model_performance
     
