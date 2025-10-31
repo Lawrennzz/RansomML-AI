@@ -63,30 +63,14 @@ The system includes 4 default test accounts for each role:
 
 **Note**: Each role has different permissions and access to different features!
 
-### **📓 For Jupyter Notebook:**
-```bash
-# Interactive notebook experience
-python -m jupyterlab
-# Open: ransomware_detection.ipynb
-```
 
 ---
 
 ## 📁 **Complete File Structure**
 
 ### **🌐 Web Applications**
-- **`hybrid_app.py`** - Main hybrid web + Jupyter application
-- **`app.py`** - Original web application
-- **`simple_test_app.py`** - Simple test app for debugging
-- **`start_web_app.py`** - Startup script
-
-### **📓 Jupyter Notebooks**
-- **`ransomware_detection.ipynb`** - Main interactive notebook (1728 lines)
-
-### **🎓 Educational Resources**
-- **`learning_tutorial.py`** - Interactive tutorial with 7 lessons
-- **`LEARNING_GUIDE.md`** - Comprehensive learning guide (686 lines)
-- **`COMPLETE_FILE_DOCUMENTATION.md`** - Complete file documentation
+- **`app.py`** - Main web application with role-based authentication
+- **`simple_test.py`** - Simple test script
 
 ### **🌐 Web Templates**
 - **`templates/index.html`** - Main dashboard interface with separated views
@@ -184,25 +168,14 @@ jupyter nbextension enable --py widgetsnbextension
 
 ## 🎮 **Usage Examples**
 
-### **Interactive Learning**
-```bash
-# Start the tutorial
-python learning_tutorial.py
-
-# Choose your learning path:
-# 1. Complete tutorial (recommended)
-# 2. Individual lessons
-# 3. Exit
-```
 
 ### **Web Application**
 ```bash
-# Run hybrid app
-python hybrid_app.py
+# Run main application
+python app.py
 
-# Access interfaces:
-# - Dashboard: http://localhost:5000
-# - Notebook View: http://localhost:5000/notebook
+# Access: http://localhost:5000
+# You will be redirected to login page
 ```
 
 ### **API Usage with Authentication**
@@ -241,10 +214,10 @@ print(response.json())
 ## 📚 **Learning Path**
 
 ### **For Beginners**
-1. **Start**: `python learning_tutorial.py`
-2. **Follow**: 7 interactive lessons
-3. **Practice**: With the web interface
-4. **Explore**: Jupyter notebook
+1. **Start**: Run `python app.py`
+2. **Login**: Use test accounts to explore different roles
+3. **Practice**: Use the Predict feature to make predictions
+4. **Explore**: Dashboard with statistics and visualizations
 
 ### **For Developers**
 1. **Study**: This README and code structure
@@ -254,10 +227,10 @@ print(response.json())
 5. **Customize**: Add new features and roles
 
 ### **For Data Scientists**
-1. **Open**: `ransomware_detection.ipynb`
-2. **Analyze**: Data and models
-3. **Experiment**: With different algorithms
-4. **Visualize**: Results and insights
+1. **Train Models**: Use the Train Model section to train different ML models
+2. **Analyze**: View feature importance and model performance metrics
+3. **Experiment**: Try different model types (RF, SVM, Neural Networks, CNN-LSTM)
+4. **Visualize**: View confusion matrices and feature importance charts
 
 ---
 
@@ -341,8 +314,8 @@ This project is open source and available under the MIT License.
 
 For questions or issues:
 - Create an issue in this repository
-- Check the `LEARNING_GUIDE.md` for troubleshooting
-- Run `python learning_tutorial.py` for guided help
+- Check this README for setup and usage instructions
+- Use the test accounts to explore different roles and features
 
 ---
 
