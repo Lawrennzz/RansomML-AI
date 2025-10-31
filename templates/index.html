@@ -3,525 +3,751 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ransomware Detection AI/ML Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>Ransomware Detection</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
     <style>
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        .main-container {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            margin: 20px;
-            padding: 30px;
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-            padding-bottom: 20px;
-            border-bottom: 3px solid #667eea;
-        }
-        
-        .header h1 {
-            color: #2c3e50;
-            font-weight: 700;
-            margin-bottom: 10px;
-        }
-        
-        .header p {
-            color: #7f8c8d;
-            font-size: 1.1em;
-        }
-        
-        .card {
-            border: none;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease;
-            margin-bottom: 20px;
-        }
-        
-        .card:hover {
-            transform: translateY(-5px);
-        }
-        
-        .card-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 15px 15px 0 0 !important;
-            padding: 15px 20px;
-            font-weight: 600;
-        }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            border-radius: 10px;
-            padding: 12px 25px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-        
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-        
-        .btn-danger {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
-            border: none;
-            border-radius: 10px;
-            padding: 12px 25px;
-            font-weight: 600;
-        }
-        
-        .btn-success {
-            background: linear-gradient(135deg, #51cf66 0%, #40c057 100%);
-            border: none;
-            border-radius: 10px;
-            padding: 12px 25px;
-            font-weight: 600;
-        }
-        
-        .form-control {
-            border-radius: 10px;
-            border: 2px solid #e9ecef;
-            padding: 12px 15px;
-            transition: all 0.3s ease;
-        }
-        
-        .form-control:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-        }
-        
-        .alert {
-            border-radius: 10px;
-            border: none;
-            padding: 15px 20px;
-        }
-        
-        .metric-card {
-            text-align: center;
-            padding: 20px;
-        }
-        
-        .metric-value {
-            font-size: 2.5em;
-            font-weight: 700;
-            margin-bottom: 10px;
-        }
-        
-        .metric-label {
-            color: #7f8c8d;
-            font-size: 1.1em;
-            font-weight: 500;
-        }
-        
-        .chart-container {
-            position: relative;
-            height: 300px;
-            margin: 20px 0;
-        }
-        
-        .detection-result {
-            padding: 20px;
-            border-radius: 10px;
-            margin: 20px 0;
-            text-align: center;
-        }
-        
-        .detection-result.ransomware {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
-            color: white;
-        }
-        
-        .detection-result.benign {
-            background: linear-gradient(135deg, #51cf66 0%, #40c057 100%);
-            color: white;
-        }
-        
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 20px;
-        }
-        
-        .spinner-border {
-            width: 3rem;
-            height: 3rem;
-        }
-        
-        .feature-input-group {
-            margin-bottom: 15px;
-        }
-        
-        .feature-label {
-            font-weight: 600;
-            color: #2c3e50;
-            margin-bottom: 5px;
-        }
-        
-        .nav-tabs {
-            border-bottom: 2px solid #e9ecef;
-        }
-        
-        .nav-tabs .nav-link {
-            border: none;
-            border-radius: 10px 10px 0 0;
-            margin-right: 5px;
-            font-weight: 600;
-            color: #7f8c8d;
-        }
-        
-        .nav-tabs .nav-link.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        
-        .tab-content {
-            padding: 20px 0;
-        }
-        
-        .history-item {
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 10px;
-            background: #f8f9fa;
-            border-left: 4px solid #667eea;
-        }
-        
-        .history-item.ransomware {
-            border-left-color: #ff6b6b;
-            background: #fff5f5;
-        }
-        
-        .history-item.benign {
-            border-left-color: #51cf66;
-            background: #f0fff4;
-        }
+        body { background: #0f172a; color:#0b1220; padding-top: 76px; }
+        .wrap { max-width: 1100px; margin: 24px auto; }
+        .card { border: 0; border-radius: 14px; box-shadow: 0 10px 24px rgba(2,6,23,.18); }
+        .card-header { background: #0ea5e9; color: white; border-top-left-radius: 14px; border-top-right-radius: 14px; }
+        .badge-soft { background: #eff6ff; color:#1e3a8a; }
+        .section { margin-bottom: 16px; }
+        .navbar-custom { background: #0f172a; border-bottom: 2px solid #0ea5e9; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .navbar-custom .navbar-brand { color: #0ea5e9; font-weight: bold; }
+        .navbar-custom .nav-link { color: #94a3b8; transition: color 0.3s; }
+        .navbar-custom .nav-link:hover { color: #0ea5e9; }
+        .navbar-custom .nav-link.active { color: #0ea5e9; font-weight: 600; }
+        .section-anchor { scroll-margin-top: 100px; }
+        html { scroll-behavior: smooth; }
+        .view-section { display: none; }
+        .view-section.active { display: block; }
     </style>
 </head>
 <body>
-    <div class="container-fluid">
-        <div class="main-container">
-            <!-- Header -->
-            <div class="header">
-                <h1><i class="fas fa-shield-alt"></i> Ransomware Detection AI/ML Dashboard</h1>
-                <p>Advanced Machine Learning System for Real-Time Threat Detection</p>
+    <nav class="navbar navbar-expand-lg navbar-custom fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#dashboard" onclick="event.preventDefault(); showView('dashboard');">🛡️ Ransomware Detection</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation" style="border-color: #0ea5e9;">
+                <span class="navbar-toggler-icon" style="background-image: url('data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'30\' height=\'30\' viewBox=\'0 0 30 30\'%3E%3Cpath stroke=\'rgba(14, 165, 233, 1)\' stroke-linecap=\'round\' stroke-miterlimit=\'10\' stroke-width=\'2\' d=\'M4 7h22M4 15h22M4 23h22\'/%3E%3C/svg%3E');"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#dashboard">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#train-model">Train Model</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#upload-csv">Upload CSV</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#predict">Predict</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#realtime">Real-Time</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#logs">Detection Logs</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#visualizations">Visualizations</a>
+                    </li>
+                </ul>
             </div>
-
-            <!-- Navigation Tabs -->
-            <ul class="nav nav-tabs" id="mainTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard" type="button" role="tab">
-                        <i class="fas fa-tachometer-alt"></i> Dashboard
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="detection-tab" data-bs-toggle="tab" data-bs-target="#detection" type="button" role="tab">
-                        <i class="fas fa-search"></i> Real-Time Detection
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics" type="button" role="tab">
-                        <i class="fas fa-chart-line"></i> Analytics
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab">
-                        <i class="fas fa-history"></i> Detection History
-                    </button>
-                </li>
-            </ul>
-
-            <!-- Tab Content -->
-            <div class="tab-content" id="mainTabsContent">
-                <!-- Dashboard Tab -->
-                <div class="tab-pane fade show active" id="dashboard" role="tabpanel">
-                    <div class="row">
-                        <!-- System Status -->
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header">
-                                    <i class="fas fa-server"></i> System Status
+        </div>
+    </nav>
+    
+    <div class="wrap">
+        <div class="view-section active" id="dashboard-view">
+        <div class="card mb-3 section-anchor" id="dashboard">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <div class="fw-semibold">Kagglehub Ransomware Detection</div>
+                <span class="badge badge-soft">Windows PE features</span>
                                 </div>
                                 <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-6">
-                                            <div class="metric-card">
-                                                <div class="metric-value text-success" id="modelStatus">
-                                                    <i class="fas fa-check-circle"></i>
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <div class="p-3 bg-light rounded">
+                            <div class="text-muted small">Samples</div>
+                            <div id="stat-samples" class="fs-4 fw-bold">–</div>
+                        </div>
                                                 </div>
-                                                <div class="metric-label">Model Status</div>
+                    <div class="col-md-3">
+                        <div class="p-3 bg-light rounded">
+                            <div class="text-muted small">Features</div>
+                            <div id="stat-features" class="fs-4 fw-bold">–</div>
                                             </div>
                                         </div>
-                                        <div class="col-6">
-                                            <div class="metric-card">
-                                                <div class="metric-value text-primary" id="totalDetections">
-                                                    0
+                                        <div class="col-md-3">
+                        <div class="p-3 bg-light rounded">
+                            <div class="text-muted small">Accuracy</div>
+                            <div id="stat-acc" class="fs-4 fw-bold">–</div>
+                                            </div>
                                                 </div>
-                                                <div class="metric-label">Total Detections</div>
+                                        <div class="col-md-3">
+                        <div class="p-3 bg-light rounded">
+                            <div class="text-muted small">F1-Score</div>
+                            <div id="stat-f1" class="fs-4 fw-bold">–</div>
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="text-center mt-3">
-                                        <button class="btn btn-primary" onclick="trainModel()">
-                                            <i class="fas fa-cog"></i> Train Model
-                                        </button>
-                                    </div>
-                                </div>
+
                             </div>
                         </div>
+        </div>
 
-                        <!-- Dataset Statistics -->
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header">
-                                    <i class="fas fa-database"></i> Dataset Statistics
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-6">
-                                            <div class="metric-card">
-                                                <div class="metric-value text-info" id="totalSamples">
-                                                    -
-                                                </div>
-                                                <div class="metric-label">Total Samples</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-6">
-                                            <div class="metric-card">
-                                                <div class="metric-value text-warning" id="features">
-                                                    -
-                                                </div>
-                                                <div class="metric-label">Features</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="row mt-3">
-                                        <div class="col-6">
-                                            <div class="metric-card">
-                                                <div class="metric-value text-danger" id="ransomwareSamples">
-                                                    -
-                                                </div>
-                                                <div class="metric-label">Ransomware</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-6">
-                                            <div class="metric-card">
-                                                <div class="metric-value text-success" id="benignSamples">
-                                                    -
-                                                </div>
-                                                <div class="metric-label">Benign</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+        <div class="view-section" id="train-model-view">
+        <div class="card mb-3 section-anchor" id="train-model">
+            <div class="card-header">Train Model</div>
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <select id="model-type" class="form-select" style="max-width:220px">
+                        <option value="rf" selected>Random Forest</option>
+                        <option value="svm">Support Vector Machine (SVM)</option>
+                        <option value="nn">Neural Networks</option>
+                        <option value="cnn-lstm">CNN-LSTM</option>
+                    </select>
+                    <button id="btn-train" class="btn btn-primary">Train model</button>
+                    <div id="train-status" class="small text-muted"></div>
+                </div>
+                
+                <!-- Training Performance Metrics -->
+                <div id="train-metrics" class="mb-3" style="display:none;">
+                    <h6 class="mb-3">Training Performance</h6>
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <div class="p-3 bg-light rounded">
+                                <div class="text-muted small">Accuracy</div>
+                                <div id="train-accuracy" class="fs-4 fw-bold">–</div>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Model Performance -->
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card">
-                                <div class="card-header">
-                                    <i class="fas fa-chart-bar"></i> Model Performance Metrics
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-md-3">
-                                            <div class="metric-card">
-                                                <div class="metric-value text-success" id="accuracy">
-                                                    -
-                                                </div>
-                                                <div class="metric-label">Accuracy</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <div class="metric-card">
-                                                <div class="metric-value text-info" id="precision">
-                                                    -
-                                                </div>
-                                                <div class="metric-label">Precision</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <div class="metric-card">
-                                                <div class="metric-value text-warning" id="recall">
-                                                    -
-                                                </div>
-                                                <div class="metric-label">Recall</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <div class="metric-card">
-                                                <div class="metric-value text-primary" id="f1Score">
-                                                    -
-                                                </div>
-                                                <div class="metric-label">F1-Score</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                        <div class="col-md-3">
+                            <div class="p-3 bg-light rounded">
+                                <div class="text-muted small">Precision</div>
+                                <div id="train-precision" class="fs-4 fw-bold">–</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="p-3 bg-light rounded">
+                                <div class="text-muted small">Recall</div>
+                                <div id="train-recall" class="fs-4 fw-bold">–</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="p-3 bg-light rounded">
+                                <div class="text-muted small">F1-Score</div>
+                                <div id="train-f1" class="fs-4 fw-bold">–</div>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <!-- Real-Time Detection Tab -->
-                <div class="tab-pane fade" id="detection" role="tabpanel">
-                    <div class="row">
-                        <div class="col-md-8">
-                            <div class="card">
-                                <div class="card-header">
-                                    <i class="fas fa-search"></i> Real-Time Detection Interface
-                                </div>
+        <!-- Visualizations in Train Model Section -->
+        <div class="card mb-3">
+            <div class="card-header">Training Visualizations</div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <h6>Confusion Matrix</h6>
+                        <canvas id="train-cmChart" height="260"></canvas>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Top Feature Importance</h6>
+                        <canvas id="train-fiChart" height="260"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </div>
+
+        <div class="view-section" id="upload-csv-view">
+        <div class="card mb-3 section-anchor" id="upload-csv">
+            <div class="card-header">Upload CSV Dataset</div>
                                 <div class="card-body">
-                                    <form id="detectionForm">
-                                        <div class="row">
+                <div class="mb-3">
+                    <label for="csv-upload" class="form-label">Upload CSV file with PE features</label>
+                    <input type="file" class="form-control" id="csv-upload" accept=".csv" />
+                    <div class="form-text">CSV should have columns matching the feature names</div>
+                                                </div>
+                <button id="btn-upload-csv" class="btn btn-info">Upload & Analyze</button>
+                <div id="upload-status" class="mt-2 small text-muted"></div>
+                <div id="uploaded-data-preview" class="mt-3" style="display:none;">
+                    <h6>Dataset Preview</h6>
+                    <div class="table-responsive" style="max-height:300px; overflow-y:auto;">
+                        <table id="csv-preview-table" class="table table-sm table-striped"></table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+        </div>
+
+        <div class="view-section" id="predict-view">
+        <div class="card mb-3 section-anchor" id="predict">
+            <div class="card-header">Predict</div>
+                                <div class="card-body">
+                <div id="feature-form" class="row g-2 section"></div>
+                <button id="btn-predict" class="btn btn-success">Predict</button>
+                    </div>
+                </div>
+
+        <div class="card mb-3">
+            <div class="card-header">Detection Result</div>
+                                <div class="card-body">
+                <div id="result-container" style="display:none;">
+                    <div class="alert" id="result-alert" role="alert">
+                        <h5 class="alert-heading" id="result-title"></h5>
+                        <hr>
+                        <div class="row g-3 mt-2">
                                             <div class="col-md-6">
-                                                <div class="feature-input-group">
-                                                    <label class="feature-label">File Access Count</label>
-                                                    <input type="number" class="form-control" id="file_access_count" value="50" min="0">
-                                                </div>
-                                                <div class="feature-input-group">
-                                                    <label class="feature-label">Entropy Change</label>
-                                                    <input type="number" class="form-control" id="entropy_change" value="0" step="0.1">
-                                                </div>
-                                                <div class="feature-input-group">
-                                                    <label class="feature-label">System Calls</label>
-                                                    <input type="number" class="form-control" id="system_calls" value="100" min="0">
-                                                </div>
-                                                <div class="feature-input-group">
-                                                    <label class="feature-label">Network Connections</label>
-                                                    <input type="number" class="form-control" id="network_connections" value="20" min="0">
-                                                </div>
-                                                <div class="feature-input-group">
-                                                    <label class="feature-label">File Modifications</label>
-                                                    <input type="number" class="form-control" id="file_modifications" value="30" min="0">
+                                <div class="p-3 bg-light rounded">
+                                    <div class="text-muted small">Risk Level</div>
+                                    <div id="result-risk" class="fs-4 fw-bold"></div>
                                                 </div>
                                             </div>
                                             <div class="col-md-6">
-                                                <div class="feature-input-group">
-                                                    <label class="feature-label">CPU Usage (%)</label>
-                                                    <input type="number" class="form-control" id="cpu_usage" value="50" min="0" max="100" step="0.1">
-                                                </div>
-                                                <div class="feature-input-group">
-                                                    <label class="feature-label">Memory Usage (%)</label>
-                                                    <input type="number" class="form-control" id="memory_usage" value="50" min="0" max="100" step="0.1">
-                                                </div>
-                                                <div class="feature-input-group">
-                                                    <label class="feature-label">Disk I/O</label>
-                                                    <input type="number" class="form-control" id="disk_io" value="200" min="0">
-                                                </div>
-                                                <div class="feature-input-group">
-                                                    <label class="feature-label">Process Count</label>
-                                                    <input type="number" class="form-control" id="process_count" value="150" min="0">
-                                                </div>
-                                                <div class="feature-input-group">
-                                                    <label class="feature-label">Registry Changes</label>
-                                                    <input type="number" class="form-control" id="registry_changes" value="10" min="0">
+                                <div class="p-3 bg-light rounded">
+                                    <div class="text-muted small">Confidence</div>
+                                    <div id="result-confidence" class="fs-4 fw-bold"></div>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="text-center mt-4">
-                                            <button type="submit" class="btn btn-primary btn-lg">
-                                                <i class="fas fa-search"></i> Analyze System Behavior
-                                            </button>
+                        <div class="row g-3 mt-2">
+                        <div class="col-md-6">
+                                <div class="progress" style="height:25px">
+                                    <div id="benign-progress" class="progress-bar bg-success" role="progressbar" style="width:0%">Benign</div>
+                                </div>
                                         </div>
-                                    </form>
+                            <div class="col-md-6">
+                                <div class="progress" style="height:25px">
+                                    <div id="ransom-progress" class="progress-bar bg-danger" role="progressbar" style="width:0%">Ransomware</div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="card">
-                                <div class="card-header">
-                                    <i class="fas fa-exclamation-triangle"></i> Detection Result
+                        <div class="mt-3 small text-muted">
+                            <div>Model Type: <span id="result-model-type"></span></div>
+                            <div>Timestamp: <span id="result-timestamp"></span></div>
+                                    </div>
                                 </div>
+                            </div>
+                <div id="result-placeholder" class="text-center text-muted">
+                    <p>Enter feature values and click "Predict" to see results</p>
+                        </div>
+                    </div>
+                </div>
+        </div>
+        </div>
+
+        <div class="view-section" id="realtime-view">
+        <div class="card mb-3 section-anchor" id="realtime">
+            <div class="card-header">Real-Time Classification</div>
                                 <div class="card-body">
-                                    <div id="detectionResult" class="detection-result" style="display: none;">
-                                        <h3 id="resultTitle"></h3>
-                                        <p id="resultConfidence"></p>
-                                        <p id="resultRisk"></p>
+                <div class="mb-3">
+                    <label class="form-label">System Behavior Data (JSON)</label>
+                    <textarea id="behavioral-input" class="form-control" rows="4" placeholder='{"file_access_count": 100, "file_modifications": 50, "crypto_operations": 2, ...}'></textarea>
+                    <div class="form-text">Enter behavioral data as JSON</div>
                                     </div>
-                                    <div id="noDetection" class="text-center text-muted">
-                                        <i class="fas fa-info-circle fa-3x mb-3"></i>
-                                        <p>Enter system metrics and click "Analyze" to get detection results</p>
-                                    </div>
+                <button id="btn-classify-realtime" class="btn btn-warning">Classify Real-Time</button>
+                <div id="realtime-result" class="mt-3"></div>
                                 </div>
+                            </div>
+        </div>
+
+        <div class="view-section" id="logs-view">
+        <div class="card mb-3 section-anchor" id="logs">
+            <div class="card-header">Detection Event Logs</div>
+                                <div class="card-body">
+                <button id="btn-view-logs" class="btn btn-secondary">View Detection Logs</button>
+                <div id="logs-container" class="mt-3" style="display:none;">
+                    <div class="table-responsive" style="max-height:400px; overflow-y:auto;">
+                        <table id="logs-table" class="table table-sm table-striped"></table>
                             </div>
                         </div>
                     </div>
                 </div>
+        </div>
 
-                <!-- Analytics Tab -->
-                <div class="tab-pane fade" id="analytics" role="tabpanel">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header">
-                                    <i class="fas fa-chart-pie"></i> Feature Importance
-                                </div>
-                                <div class="card-body">
-                                    <div class="chart-container">
-                                        <canvas id="featureImportanceChart"></canvas>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header">
-                                    <i class="fas fa-chart-bar"></i> Confusion Matrix
-                                </div>
-                                <div class="card-body">
-                                    <div class="chart-container">
-                                        <canvas id="confusionMatrixChart"></canvas>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Detection History Tab -->
-                <div class="tab-pane fade" id="history" role="tabpanel">
-                    <div class="card">
-                        <div class="card-header">
-                            <i class="fas fa-history"></i> Recent Detection History
-                        </div>
+        <div class="view-section" id="visualizations-view">
+        <div class="card mb-3 section-anchor" id="visualizations">
+            <div class="card-header">Visualizations</div>
                         <div class="card-body">
-                            <div id="detectionHistory">
-                                <div class="text-center text-muted">
-                                    <i class="fas fa-clock fa-3x mb-3"></i>
-                                    <p>No detection history available yet</p>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <h6>Confusion Matrix</h6>
+                        <canvas id="cmChart" height="260"></canvas>
                                 </div>
+                        <div class="col-md-6">
+                        <h6>Top Feature Importance</h6>
+                        <canvas id="fiChart" height="260"></canvas>
                             </div>
                         </div>
-                    </div>
-                </div>
+
             </div>
         </div>
-    </div>
-
-    <!-- Loading Modal -->
-    <div class="loading" id="loadingModal">
-        <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading...</span>
         </div>
-        <p class="mt-3">Processing...</p>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script>
+        async function fetchJSON(url, opts) {
+            const r = await fetch(url, opts);
+            const txt = await r.text();
+            let data = {};
+            try { data = JSON.parse(txt || '{}'); } catch { data = { success:false, message: txt }; }
+            if (!r.ok) throw new Error(data.message || r.statusText);
+            return data;
+        }
+
+        function renderFeatures(features) {
+            const form = document.getElementById('feature-form');
+            form.innerHTML = '';
+            features.forEach((f) => {
+                const col = document.createElement('div');
+                col.className = 'col-md-3';
+                col.innerHTML = `
+                    <div class="form-floating">
+                        <input type="number" step="any" class="form-control" id="f-${f}" placeholder="0" value="0">
+                        <label for="f-${f}">${f}</label>
+        </div>
+                `;
+                form.appendChild(col);
+            });
+        }
+
+        async function loadFeatures() {
+            try {
+                const data = await fetchJSON('/api/feature-columns');
+                if (data.success) renderFeatures(data.features || []);
+            } catch {}
+        }
+
+        async function refreshStats() {
+            try {
+                const perf = await fetchJSON('/api/model-performance');
+                if (perf.success) {
+                    const p = perf.performance || {};
+                    const accEl = document.getElementById('stat-acc');
+                    const f1El = document.getElementById('stat-f1');
+                    if (accEl) accEl.textContent = (p.accuracy ?? 0).toFixed(4);
+                    if (f1El) f1El.textContent = (p.f1_score ?? 0).toFixed(4);
+                }
+            } catch {}
+            try {
+                const ds = await fetchJSON('/api/dataset-stats');
+                if (ds.success && ds.stats) {
+                    const samplesEl = document.getElementById('stat-samples');
+                    const featuresEl = document.getElementById('stat-features');
+                    if (samplesEl) samplesEl.textContent = ds.stats.total_samples ?? '–';
+                    if (featuresEl) featuresEl.textContent = ds.stats.features ?? '–';
+                }
+            } catch {}
+        }
+
+        document.getElementById('btn-train').addEventListener('click', async () => {
+            const status = document.getElementById('train-status');
+            if (status) status.textContent = 'Training... (first run may download dataset)';
+            
+            // Hide metrics and charts initially
+            const metricsDiv = document.getElementById('train-metrics');
+            if (metricsDiv) metricsDiv.style.display = 'none';
+            
+            try {
+                const mt = document.getElementById('model-type').value;
+                const data = await fetchJSON('/api/train', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model_type: mt }) });
+                if (status) status.textContent = data.success ? 'Training complete.' : ('Training failed: ' + data.message);
+                await loadFeatures();
+                await refreshStats();
+                if (data.success) {
+                    const perf = data.performance || {};
+                    
+                    // Show and update metrics
+                    if (metricsDiv) {
+                        metricsDiv.style.display = 'block';
+                        const accEl = document.getElementById('train-accuracy');
+                        const precEl = document.getElementById('train-precision');
+                        const recEl = document.getElementById('train-recall');
+                        const f1El = document.getElementById('train-f1');
+                        
+                        if (accEl) accEl.textContent = (perf.accuracy ?? 0).toFixed(4);
+                        if (precEl) precEl.textContent = (perf.precision ?? 0).toFixed(4);
+                        if (recEl) recEl.textContent = (perf.recall ?? 0).toFixed(4);
+                        if (f1El) f1El.textContent = (perf.f1_score ?? 0).toFixed(4);
+                    }
+                    
+                    // Render visualizations in train model section
+                    await ensureChartJsLoaded();
+                    renderTrainConfusionMatrix(perf.confusion_matrix || [[0,0],[0,0]]);
+                    await renderTrainFeatureImportance();
+                    
+                    // Also update general visualizations if in visualizations view
+                    renderConfusionMatrix(perf.confusion_matrix || [[0,0],[0,0]]);
+                    await renderFeatureImportance();
+                }
+            } catch (e) {
+                if (status) status.textContent = 'Training failed: ' + e.message;
+            }
+        });
+
+        // Charts state
+        let cmChart, fiChart, trainCmChart, trainFiChart;
+
+        async function ensureChartJsLoaded() {
+            if (window.Chart) return;
+            await new Promise(r => setTimeout(r, 300));
+        }
+
+        // Render confusion matrix for general visualizations view
+        function renderConfusionMatrix(cm) {
+            const canvas = document.getElementById('cmChart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const data = {
+                labels: ['Pred Benign', 'Pred Ransomware'],
+                datasets: [
+                    { label: 'Actual Benign', data: [cm?.[0]?.[0]||0, cm?.[0]?.[1]||0], backgroundColor: 'rgba(99, 102, 241, 0.7)' },
+                    { label: 'Actual Ransomware', data: [cm?.[1]?.[0]||0, cm?.[1]?.[1]||0], backgroundColor: 'rgba(239, 68, 68, 0.7)' }
+                ]
+            };
+            cmChart && cmChart.destroy();
+            cmChart = new Chart(ctx, { type: 'bar', data, options: { responsive: true, plugins: { legend: { position: 'bottom' }}}});
+        }
+
+        // Render confusion matrix for train model view
+        function renderTrainConfusionMatrix(cm) {
+            const canvas = document.getElementById('train-cmChart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const data = {
+                labels: ['Pred Benign', 'Pred Ransomware'],
+                datasets: [
+                    { label: 'Actual Benign', data: [cm?.[0]?.[0]||0, cm?.[0]?.[1]||0], backgroundColor: 'rgba(99, 102, 241, 0.7)' },
+                    { label: 'Actual Ransomware', data: [cm?.[1]?.[0]||0, cm?.[1]?.[1]||0], backgroundColor: 'rgba(239, 68, 68, 0.7)' }
+                ]
+            };
+            trainCmChart && trainCmChart.destroy();
+            trainCmChart = new Chart(ctx, { type: 'bar', data, options: { responsive: true, plugins: { legend: { position: 'bottom' }}}});
+        }
+
+        // Render feature importance for general visualizations view
+        async function renderFeatureImportance() {
+            try {
+                const imp = await fetchJSON('/api/feature-importance');
+                const kv = imp.importance ? Object.entries(imp.importance) : [];
+                kv.sort((a,b)=>b[1]-a[1]);
+                const top = kv.slice(0, 10);
+                const labels = top.map(x=>x[0]);
+                const values = top.map(x=>x[1]);
+                const canvas = document.getElementById('fiChart');
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                fiChart && fiChart.destroy();
+                fiChart = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: 'Importance', data: values, backgroundColor: 'rgba(16, 185, 129, 0.8)'}]}, options: { indexAxis: 'y', plugins: { legend: { display: false }}}});
+            } catch {
+                // ignore
+            }
+        }
+
+        // Render feature importance for train model view
+        async function renderTrainFeatureImportance() {
+            try {
+                const imp = await fetchJSON('/api/feature-importance');
+                const kv = imp.importance ? Object.entries(imp.importance) : [];
+                kv.sort((a,b)=>b[1]-a[1]);
+                const top = kv.slice(0, 10);
+                const labels = top.map(x=>x[0]);
+                const values = top.map(x=>x[1]);
+                const canvas = document.getElementById('train-fiChart');
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                trainFiChart && trainFiChart.destroy();
+                trainFiChart = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: 'Importance', data: values, backgroundColor: 'rgba(16, 185, 129, 0.8)'}]}, options: { indexAxis: 'y', plugins: { legend: { display: false }}}});
+            } catch {
+                // ignore
+            }
+        }
+
+        
+
+        document.getElementById('btn-upload-csv').addEventListener('click', async () => {
+            const fileInput = document.getElementById('csv-upload');
+            const file = fileInput.files[0];
+            const status = document.getElementById('upload-status');
+            const preview = document.getElementById('uploaded-data-preview');
+            const table = document.getElementById('csv-preview-table');
+            
+            if (!file) {
+                if (status) status.textContent = 'Please select a CSV file';
+                return;
+            }
+            
+            if (status) status.textContent = 'Uploading...';
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const response = await fetch('/api/upload-csv', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (status) {
+                        status.textContent = data.message;
+                        status.className = 'mt-2 small text-success';
+                    }
+                    
+                    // Show preview table
+                    if (data.preview && data.preview.length > 0 && preview && table) {
+                        preview.style.display = 'block';
+                        const cols = Object.keys(data.preview[0]);
+                        let html = '<thead><tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>';
+                        data.preview.forEach(row => {
+                            html += '<tr>' + cols.map(c => `<td>${row[c] !== null && row[c] !== undefined ? row[c] : ''}</td>`).join('') + '</tr>';
+                        });
+                        html += '</tbody>';
+                        table.innerHTML = html;
+                    }
+                    
+                    // Show stats
+                    if (data.stats && preview) {
+                        const statsDiv = document.createElement('div');
+                        statsDiv.className = 'mt-2 p-2 bg-light rounded';
+                        statsDiv.innerHTML = `
+                            <strong>Dataset Statistics:</strong><br>
+                            Total Rows: ${data.stats.total_rows}<br>
+                            Available Features: ${data.stats.available_features}/${data.stats.missing_features + data.stats.available_features}<br>
+                            ${data.stats.missing_features > 0 ? '<span class="text-warning">Missing: ' + data.stats.missing_feature_names.join(', ') + '</span>' : ''}
+                        `;
+                        preview.appendChild(statsDiv);
+                    }
+                } else {
+                    if (status) {
+                        status.textContent = 'Upload failed: ' + data.message;
+                        status.className = 'mt-2 small text-danger';
+                    }
+                    if (preview) preview.style.display = 'none';
+                }
+            } catch (e) {
+                if (status) {
+                    status.textContent = 'Upload error: ' + e.message;
+                    status.className = 'mt-2 small text-danger';
+                }
+                if (preview) preview.style.display = 'none';
+            }
+        });
+
+        document.getElementById('btn-predict').addEventListener('click', async () => {
+            const inputs = document.querySelectorAll('#feature-form input');
+            const payload = {};
+            inputs.forEach(inp => {
+                const key = inp.id.substring(2);
+                const val = parseFloat(inp.value || '0');
+                payload[key] = isNaN(val) ? 0 : val;
+            });
+            const container = document.getElementById('result-container');
+            const placeholder = document.getElementById('result-placeholder');
+            if (placeholder) placeholder.style.display = 'none';
+            if (container) container.style.display = 'block';
+            const alert = document.getElementById('result-alert');
+            if (alert) {
+                alert.className = 'alert alert-info';
+                const h5 = alert.querySelector('h5');
+                if (h5) h5.textContent = 'Predicting...';
+            }
+            try {
+                const data = await fetchJSON('/api/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (data.success && data.result) {
+                    const r = data.result;
+                    const isRansomware = r.prediction === 1;
+                    const alertClass = isRansomware ? 'alert-danger' : 'alert-success';
+                    if (alert) alert.className = `alert ${alertClass}`;
+                    const titleEl = document.getElementById('result-title');
+                    const riskEl = document.getElementById('result-risk');
+                    const confEl = document.getElementById('result-confidence');
+                    const modelEl = document.getElementById('result-model-type');
+                    const tsEl = document.getElementById('result-timestamp');
+                    const benignEl = document.getElementById('benign-progress');
+                    const ransomEl = document.getElementById('ransom-progress');
+                    
+                    if (titleEl) titleEl.textContent = isRansomware ? '⚠️ RANSOMWARE DETECTED' : '✅ BENIGN FILE';
+                    if (riskEl) riskEl.textContent = r.risk_level;
+                    if (confEl) confEl.textContent = (r.confidence * 100).toFixed(2) + '%';
+                    if (modelEl) modelEl.textContent = r.model_type || 'unknown';
+                    if (tsEl) tsEl.textContent = new Date(r.timestamp).toLocaleString();
+                    const benignPct = (r.benign_probability * 100).toFixed(1);
+                    const ransomPct = (r.ransomware_probability * 100).toFixed(1);
+                    if (benignEl) {
+                        benignEl.style.width = benignPct + '%';
+                        benignEl.textContent = `Benign: ${benignPct}%`;
+                    }
+                    if (ransomEl) {
+                        ransomEl.style.width = ransomPct + '%';
+                        ransomEl.textContent = `Ransomware: ${ransomPct}%`;
+                    }
+                } else {
+                    if (alert) {
+                        alert.className = 'alert alert-warning';
+                        alert.innerHTML = `<h5>Prediction Failed</h5><p>${data.message || 'Unknown error'}</p>`;
+                    }
+                }
+            } catch (e) {
+                if (alert) {
+                    alert.className = 'alert alert-danger';
+                    alert.innerHTML = `<h5>Error</h5><p>${e.message}</p>`;
+                }
+            }
+        });
+
+        document.getElementById('btn-classify-realtime').addEventListener('click', async () => {
+            const input = document.getElementById('behavioral-input').value;
+            const resultDiv = document.getElementById('realtime-result');
+            
+            if (!input.trim()) {
+                resultDiv.innerHTML = '<div class="alert alert-warning">Please enter behavioral data</div>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<div class="alert alert-info">Classifying...</div>';
+            
+            try {
+                let behavioralData;
+                try {
+                    behavioralData = JSON.parse(input);
+                } catch (e) {
+                    resultDiv.innerHTML = '<div class="alert alert-danger">Invalid JSON format</div>';
+                    return;
+                }
+                
+                const data = await fetchJSON('/api/classify-realtime', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(behavioralData)
+                });
+                
+                if (data.success) {
+                    const r = data.result;
+                    const isRansomware = r.prediction === 1;
+                    const alertClass = isRansomware ? 'alert-danger' : 'alert-success';
+                    resultDiv.innerHTML = `
+                        <div class="alert ${alertClass}">
+                            <h6>${isRansomware ? '⚠️ RANSOMWARE DETECTED' : '✅ BENIGN BEHAVIOR'}</h6>
+                            <hr>
+                            <div><strong>Threat Classification:</strong> ${data.threat_classification}</div>
+                            <div><strong>Recommendation:</strong> ${data.recommendation}</div>
+                            <div><strong>Confidence:</strong> ${(r.confidence * 100).toFixed(2)}%</div>
+                            <div><strong>Risk Level:</strong> ${r.risk_level}</div>
+                            <hr>
+                            <div><strong>Behavioral Indicators:</strong></div>
+                            <ul>
+                                <li>Suspicious Activity Score: ${(data.behavioral_indicators.suspicious_activity_score * 100).toFixed(1)}%</li>
+                                <li>Crypto Operations: ${data.behavioral_indicators.crypto_operations}</li>
+                                <li>File Modifications: ${data.behavioral_indicators.file_modifications}</li>
+                            </ul>
+    </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+                }
+            } catch (e) {
+                resultDiv.innerHTML = `<div class="alert alert-danger">Error: ${e.message}</div>`;
+            }
+        });
+
+        document.getElementById('btn-view-logs').addEventListener('click', async () => {
+            const container = document.getElementById('logs-container');
+            const table = document.getElementById('logs-table');
+            
+            container.style.display = 'block';
+            table.innerHTML = '<tbody><tr><td>Loading...</td></tr></tbody>';
+            
+            try {
+                const data = await fetchJSON('/api/detection-logs?limit=50');
+                if (data.success && data.logs.length > 0) {
+                    const cols = Object.keys(data.logs[0]);
+                    let html = '<thead><tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>';
+                    data.logs.reverse().forEach(log => {
+                        html += '<tr>' + cols.map(c => {
+                            const val = log[c];
+                            if (typeof val === 'object') return `<td>${JSON.stringify(val).substring(0, 50)}...</td>`;
+                            return `<td>${val || ''}</td>`;
+                        }).join('') + '</tr>';
+                    });
+                    html += '</tbody>';
+                    table.innerHTML = html;
+                } else {
+                    table.innerHTML = '<tbody><tr><td>No detection logs available</td></tr></tbody>';
+                }
+            } catch (e) {
+                table.innerHTML = `<tbody><tr><td>Error loading logs: ${e.message}</td></tr></tbody>`;
+            }
+        });
+
+        // Navigation system - show only selected section
+        window.showView = function(viewId) {
+            // Hide all views
+            document.querySelectorAll('.view-section').forEach(view => {
+                view.classList.remove('active');
+            });
+            
+            // Show selected view
+            const targetView = document.getElementById(viewId + '-view');
+            if (targetView) {
+                targetView.classList.add('active');
+            }
+            
+            // Update active nav link
+            document.querySelectorAll('.navbar-nav .nav-link').forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + viewId) {
+                    link.classList.add('active');
+                }
+            });
+            
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            // Update URL hash without triggering hashchange
+            if (window.location.hash !== '#' + viewId) {
+                window.history.pushState(null, '', '#' + viewId);
+            }
+        }
+
+        // Navbar click handlers
+        document.querySelectorAll('.navbar-nav .nav-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href').substring(1); // Remove #
+                showView(targetId);
+            });
+        });
+
+        // Handle initial page load with hash
+        function handleInitialView() {
+            const hash = window.location.hash.substring(1);
+            if (hash) {
+                showView(hash);
+            } else {
+                showView('dashboard'); // Default view
+            }
+        }
+
+        // Handle browser back/forward buttons
+        window.addEventListener('hashchange', function() {
+            handleInitialView();
+        });
+
+        handleInitialView(); // Set initial view
+
+        loadFeatures();
+        refreshStats();
+    </script>
 </body>
 </html>

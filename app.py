@@ -1,180 +1,526 @@
 #!/usr/bin/env python3
 """
-Ransomware Detection Web Application
-A Flask-based web GUI for the ransomware detection AI/ML system
+Ransomware Detection Web Application (Kagglehub version)
+Loads Windows PE feature dataset from Kaggle via kagglehub and trains a model.
 """
 
 import os
 import json
 import pandas as pd
 import numpy as np
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify
+from werkzeug.utils import secure_filename
+import io
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
+from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
-import joblib
 import warnings
+
 warnings.filterwarnings('ignore')
 
+try:
+    import kagglehub
+    from kagglehub import KaggleDatasetAdapter
+except Exception as _:
+    kagglehub = None
+    KaggleDatasetAdapter = None
+
+from typing import Optional
+
+# Optional TensorFlow import for deep models
+try:
+    import tensorflow as tf
+    from tensorflow import keras
+    TF_AVAILABLE = True
+except Exception:
+    tf = None
+    keras = None
+    TF_AVAILABLE = False
+
 app = Flask(__name__)
-app.secret_key = 'ransomware_detection_secret_key_2024'
+app.secret_key = 'ransomware_detection_secret_key_2025'
+
 
 class RansomwareDetector:
-    """Main class for ransomware detection functionality"""
+    """Detector using Kaggle PE features dataset.
+
+    Label convention: dataset has 'Benign' (1=benign, 0=malicious).
+    We predict 'ransomware' = 1 - Benign for clarity in UI.
+    """
     
     def __init__(self):
         self.model = None
         self.scaler = None
-        self.feature_columns = None
+        self.feature_columns = []
         self.training_data = None
         self.model_performance = {}
         self.detection_history = []
+        self.dataset_loaded = False
+        self.model_type = 'rf'
+        self.system_logs = []  # Store system behavior logs
+        self.detection_logs = []  # Detailed detection event logs
+
+    def load_kaggle_dataset(self, file_path: str = "data_file.csv"):
+        """Load dataset from local CSV file first, fallback to kagglehub if needed"""
+        # Try loading from local file first
+        if os.path.exists(file_path):
+            print(f"Loading dataset from local file: {file_path}")
+            df = pd.read_csv(file_path)
+        elif kagglehub is not None:
+            print(f"Loading dataset from Kaggle via kagglehub...")
+            df = kagglehub.load_dataset(
+                KaggleDatasetAdapter.PANDAS,
+                "amdj3dax/ransomware-detection-data-set",
+                file_path,
+            )
+        else:
+            raise RuntimeError(
+                f"Dataset file '{file_path}' not found locally and kagglehub not available. "
+                "Either place data_file.csv in the project directory or install: pip install kagglehub[pandas-datasets]"
+            )
+
+        print(f"Dataset loaded: {len(df)} rows, {len(df.columns)} columns")
+
+        # Basic cleaning: drop identifiers, keep numeric columns
+        drop_cols = [c for c in ['FileName', 'md5Hash'] if c in df.columns]
+        df = df.drop(columns=drop_cols, errors='ignore')
+        df = df.replace([np.inf, -np.inf], np.nan).dropna(axis=0)
+
+        # Ensure Benign column exists
+        if 'Benign' not in df.columns:
+            raise ValueError("Dataset missing 'Benign' label column")
+
+        # Define target as ransomware = 1 - Benign (1=benign, 0=malicious in dataset)
+        df = df.copy()
+        df['ransomware'] = 1 - df['Benign'].astype(int)
+
+        # Feature selection: numeric columns excluding labels
+        numeric_df = df.select_dtypes(include=[np.number])
+        self.feature_columns = [c for c in numeric_df.columns if c not in ['Benign', 'ransomware']]
+
+        # Keep only features + target
+        self.training_data = numeric_df[self.feature_columns + ['ransomware']]
+        self.dataset_loaded = True
         
-    def create_synthetic_dataset(self, n_samples=5000):
-        """Create synthetic ransomware dataset"""
-        print("Creating synthetic ransomware dataset...")
+        print(f"Processed dataset: {len(self.training_data)} samples, {len(self.feature_columns)} features")
+        print(f"Features: {', '.join(self.feature_columns)}")
         
-        np.random.seed(42)
-        
-        # Generate synthetic features
-        data = {
-            'file_access_count': np.random.poisson(50, n_samples),
-            'entropy_change': np.random.normal(0, 2, n_samples),
-            'system_calls': np.random.poisson(100, n_samples),
-            'network_connections': np.random.poisson(20, n_samples),
-            'file_modifications': np.random.poisson(30, n_samples),
-            'cpu_usage': np.random.beta(2, 5, n_samples) * 100,
-            'memory_usage': np.random.beta(2, 5, n_samples) * 100,
-            'disk_io': np.random.poisson(200, n_samples),
-            'process_count': np.random.poisson(150, n_samples),
-            'registry_changes': np.random.poisson(10, n_samples)
-        }
-        
-        df = pd.DataFrame(data)
-        
-        # Create labels based on feature combinations (simulating ransomware behavior)
-        ransomware_indicators = (
-            (df['file_access_count'] > 80) |
-            (df['entropy_change'] > 2) |
-            (df['system_calls'] > 150) |
-            (df['file_modifications'] > 50) |
-            (df['cpu_usage'] > 80)
-        )
-        
-        df['label'] = ransomware_indicators.astype(int)
-        
-        # Add some noise to make it more realistic
-        noise_mask = np.random.random(n_samples) < 0.1
-        df.loc[noise_mask, 'label'] = 1 - df.loc[noise_mask, 'label']
-        
-        self.training_data = df
-        self.feature_columns = [col for col in df.columns if col != 'label']
-        
-        return df
-    
-    def train_models(self):
-        """Train machine learning models"""
-        if self.training_data is None:
-            self.create_synthetic_dataset()
+        return self.training_data
+
+    def _build_mlp_keras(self, input_dim: int):
+        """Build Keras MLP model"""
+        if not TF_AVAILABLE:
+            raise RuntimeError("TensorFlow/Keras not installed for Neural Networks. Install with: pip install tensorflow")
+        model = keras.Sequential([
+            keras.layers.Input(shape=(input_dim,)),
+            keras.layers.Dense(128, activation='relu'),
+            keras.layers.Dropout(0.2),
+            keras.layers.Dense(64, activation='relu'),
+            keras.layers.Dropout(0.2),
+            keras.layers.Dense(1, activation='sigmoid'),
+        ])
+        model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+        return model
+
+    def _build_cnn_lstm(self, timesteps: int):
+        """Build CNN-LSTM model"""
+        if not TF_AVAILABLE:
+            raise RuntimeError("TensorFlow/Keras not installed for CNN-LSTM. Install with: pip install tensorflow")
+        model = keras.Sequential([
+            keras.layers.Input(shape=(timesteps, 1)),
+            keras.layers.Conv1D(32, 3, activation='relu', padding='same'),
+            keras.layers.MaxPooling1D(2),
+            keras.layers.Conv1D(64, 3, activation='relu', padding='same'),
+            keras.layers.LSTM(64),
+            keras.layers.Dense(32, activation='relu'),
+            keras.layers.Dense(1, activation='sigmoid'),
+        ])
+        model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+        return model
+
+    def train_models(self, model_type: Optional[str] = None):
+        if not self.dataset_loaded:
+            self.load_kaggle_dataset()
         
         df = self.training_data
         X = df[self.feature_columns]
-        y = df['label']
+        y = df['ransomware']
         
-        # Split data
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, random_state=42, stratify=y
         )
         
-        # Scale features
         self.scaler = StandardScaler()
         X_train_scaled = self.scaler.fit_transform(X_train)
         X_test_scaled = self.scaler.transform(X_test)
         
-        # Train Random Forest (primary model)
-        self.model = RandomForestClassifier(
-            n_estimators=100,
-            max_depth=10,
-            min_samples_split=5,
-            min_samples_leaf=2,
-            random_state=42
-        )
-        self.model.fit(X_train_scaled, y_train)
-        
-        # Evaluate model
-        y_pred = self.model.predict(X_test_scaled)
-        
+        chosen = (model_type or self.model_type or 'rf').lower()
+        self.model_type = chosen
+
+        if chosen == 'rf':
+            self.model = RandomForestClassifier(
+                n_estimators=300,
+                max_depth=None,
+                min_samples_split=2,
+                min_samples_leaf=1,
+                random_state=42,
+                n_jobs=-1,
+                class_weight='balanced_subsample',
+            )
+            self.model.fit(X_train_scaled, y_train)
+            y_pred = self.model.predict(X_test_scaled)
+        elif chosen == 'svm':
+            self.model = SVC(kernel='rbf', C=2.0, gamma='scale', probability=True, random_state=42)
+            self.model.fit(X_train_scaled, y_train)
+            y_pred = self.model.predict(X_test_scaled)
+        elif chosen == 'nn':
+            # Try Keras first, fallback to scikit-learn MLP
+            if TF_AVAILABLE:
+                try:
+                    model = self._build_mlp_keras(X_train_scaled.shape[1])
+                    model.fit(X_train_scaled, y_train, epochs=10, batch_size=256, verbose=0, validation_split=0.1)
+                    self.model = model
+                    y_prob = model.predict(X_test_scaled, verbose=0).reshape(-1)
+                    y_pred = (y_prob >= 0.5).astype(int)
+                except Exception as e:
+                    # Fallback to scikit-learn MLP
+                    self.model = MLPClassifier(hidden_layer_sizes=(128, 64), activation='relu', solver='adam',
+                                               alpha=1e-4, batch_size=256, max_iter=100, random_state=42)
+                    self.model.fit(X_train_scaled, y_train)
+                    y_pred = self.model.predict(X_test_scaled)
+            else:
+                # Use scikit-learn MLP
+                self.model = MLPClassifier(hidden_layer_sizes=(128, 64), activation='relu', solver='adam',
+                                           alpha=1e-4, batch_size=256, max_iter=100, random_state=42)
+                self.model.fit(X_train_scaled, y_train)
+                y_pred = self.model.predict(X_test_scaled)
+        elif chosen == 'cnn-lstm':
+            if not TF_AVAILABLE:
+                raise RuntimeError("CNN-LSTM requires TensorFlow. Install with: pip install tensorflow")
+            Xtr_seq = X_train_scaled.reshape((X_train_scaled.shape[0], X_train_scaled.shape[1], 1))
+            Xte_seq = X_test_scaled.reshape((X_test_scaled.shape[0], X_test_scaled.shape[1], 1))
+            model = self._build_cnn_lstm(Xtr_seq.shape[1])
+            model.fit(Xtr_seq, y_train, epochs=8, batch_size=256, verbose=0, validation_split=0.1)
+            self.model = model
+            y_prob = model.predict(Xte_seq, verbose=0).reshape(-1)
+            y_pred = (y_prob >= 0.5).astype(int)
+        else:
+            raise ValueError(f"Unsupported model_type: {chosen}")
         self.model_performance = {
-            'accuracy': accuracy_score(y_test, y_pred),
-            'precision': precision_score(y_test, y_pred),
-            'recall': recall_score(y_test, y_pred),
-            'f1_score': f1_score(y_test, y_pred),
+            'accuracy': float(accuracy_score(y_test, y_pred)),
+            'precision': float(precision_score(y_test, y_pred, zero_division=0)),
+            'recall': float(recall_score(y_test, y_pred, zero_division=0)),
+            'f1_score': float(f1_score(y_test, y_pred, zero_division=0)),
             'confusion_matrix': confusion_matrix(y_test, y_pred).tolist(),
-            'feature_importance': dict(zip(self.feature_columns, self.model.feature_importances_))
+            'feature_importance': (
+                dict(zip(self.feature_columns, self.model.feature_importances_.tolist()))
+                if hasattr(self.model, 'feature_importances_') and not callable(getattr(self.model, 'feature_importances_', None)) else None
+            ),
+            'num_features': len(self.feature_columns),
+            'num_samples': int(len(df)),
+            'model_type': self.model_type,
         }
-        
         return self.model_performance
     
-    def predict(self, features):
-        """Make prediction on new data"""
+    def predict(self, features: dict):
         if self.model is None or self.scaler is None:
             raise ValueError("Model not trained yet")
         
-        feature_values = [features[col] for col in self.feature_columns]
-        feature_array = np.array(feature_values).reshape(1, -1)
-        feature_array_scaled = self.scaler.transform(feature_array)
+        # Check if model is fitted (for scikit-learn models)
+        if hasattr(self.model, 'support_vectors_'):
+            # For SVM, check if model is fitted
+            try:
+                _ = len(self.model.support_vectors_)
+            except AttributeError:
+                raise ValueError("SVM model not properly fitted. Please retrain the model.")
         
-        prediction = self.model.predict(feature_array_scaled)[0]
-        probability = self.model.predict_proba(feature_array_scaled)[0]
-        confidence = max(probability)
+        values = []
+        for col in self.feature_columns:
+            values.append(features.get(col, 0))
+        arr = np.array(values).reshape(1, -1)
+        arr_scaled = self.scaler.transform(arr)
+
+        # Predict based on model type
+        try:
+            model_type_lower = str(self.model_type).lower()
+            
+            if model_type_lower == 'cnn-lstm':
+                if not TF_AVAILABLE:
+                    raise ValueError("CNN-LSTM requires TensorFlow. Install with: pip install tensorflow")
+                if not hasattr(self.model, 'predict'):
+                    raise ValueError("CNN-LSTM model is not properly initialized")
+                # Ensure correct shape for CNN-LSTM: (batch, timesteps, features)
+                seq_len = arr_scaled.shape[1]
+                arr_in = arr_scaled.reshape((1, seq_len, 1))
+                prob_output = self.model.predict(arr_in, verbose=0)
+                prob1 = float(np.array(prob_output).reshape(-1)[0])
+                # Ensure probability is between 0 and 1
+                prob1 = max(0.0, min(1.0, prob1))
+                pred = int(prob1 >= 0.5)
+                proba = np.array([1.0 - prob1, prob1])
+                
+            elif model_type_lower == 'nn':
+                # Check if it's a Keras model
+                is_keras_model = False
+                if TF_AVAILABLE:
+                    try:
+                        is_keras_model = isinstance(self.model, keras.Model) or hasattr(self.model, '_keras_api_names')
+                    except:
+                        pass
+                
+                if is_keras_model:
+                    # Keras MLP model
+                    prob_output = self.model.predict(arr_scaled, verbose=0)
+                    prob1 = float(np.array(prob_output).reshape(-1)[0])
+                    prob1 = max(0.0, min(1.0, prob1))
+                    pred = int(prob1 >= 0.5)
+                    proba = np.array([1.0 - prob1, prob1])
+                else:
+                    # scikit-learn MLP
+                    if not hasattr(self.model, 'predict'):
+                        raise ValueError("Neural Network model is not properly initialized")
+                    pred = int(self.model.predict(arr_scaled)[0])
+                    try:
+                        proba = self.model.predict_proba(arr_scaled)[0]
+                    except:
+                        # Fallback if predict_proba not available
+                        proba = np.array([0.5, 0.5])
+                        
+            elif model_type_lower == 'svm':
+                # SVM with probability support
+                if not hasattr(self.model, 'predict'):
+                    raise ValueError("SVM model is not properly initialized")
+                try:
+                    pred = int(self.model.predict(arr_scaled)[0])
+                    proba_raw = self.model.predict_proba(arr_scaled)
+                    # Handle both 1D and 2D outputs
+                    if len(proba_raw.shape) == 2:
+                        proba = proba_raw[0]
+                    else:
+                        proba = proba_raw
+                    # Ensure we have 2 probabilities
+                    if len(proba) < 2:
+                        proba = np.array([1.0 - proba[0], proba[0]])
+                except AttributeError as e:
+                    # If support_vectors_ error, model might not be fitted
+                    raise ValueError(f"SVM model not properly fitted: {str(e)}. Please retrain the model.")
+                    
+            elif model_type_lower == 'rf':
+                # Random Forest with probability support
+                if not hasattr(self.model, 'predict'):
+                    raise ValueError("Random Forest model is not properly initialized")
+                pred = int(self.model.predict(arr_scaled)[0])
+                proba_raw = self.model.predict_proba(arr_scaled)
+                # Handle both 1D and 2D outputs
+                if len(proba_raw.shape) == 2:
+                    proba = proba_raw[0]
+                else:
+                    proba = proba_raw
+                # Ensure we have 2 probabilities
+                if len(proba) < 2:
+                    proba = np.array([1.0 - proba[0], proba[0]])
+            else:
+                # Default: try predict_proba first, then predict
+                if not hasattr(self.model, 'predict'):
+                    raise ValueError(f"Model type '{self.model_type}' is not properly initialized")
+                pred = int(self.model.predict(arr_scaled)[0])
+                if hasattr(self.model, 'predict_proba'):
+                    try:
+                        proba_raw = self.model.predict_proba(arr_scaled)
+                        if len(proba_raw.shape) == 2:
+                            proba = proba_raw[0]
+                        else:
+                            proba = proba_raw
+                    except:
+                        proba = np.array([0.5, 0.5])
+                else:
+                    proba = np.array([1.0 - float(pred), float(pred)])
+            
+            # Normalize probabilities to ensure 2 values
+            if len(proba) < 2:
+                if pred == 0:
+                    proba = np.array([0.9, 0.1])
+                else:
+                    proba = np.array([0.1, 0.9])
+            
+            # Ensure probabilities sum to 1 and are valid
+            proba = np.clip(proba, 0.0, 1.0)
+            proba = proba / proba.sum()  # Normalize
+            
+            benign_prob = float(proba[0])
+            ransom_prob = float(proba[1])
+            confidence = float(max(benign_prob, ransom_prob))
+            
+        except ValueError:
+            raise  # Re-raise ValueError as-is
+        except Exception as e:
+            raise ValueError(f"Prediction error for {self.model_type}: {str(e)}")
         
         result = {
-            'prediction': int(prediction),
-            'confidence': float(confidence),
-            'benign_probability': float(probability[0]),
-            'ransomware_probability': float(probability[1]),
-            'risk_level': self._get_risk_level(confidence),
-            'timestamp': pd.Timestamp.now().isoformat()
+            'prediction': pred,  # 1=ransomware, 0=benign
+            'confidence': confidence,
+            'benign_probability': benign_prob,
+            'ransomware_probability': ransom_prob,
+            'risk_level': self._risk_level(confidence),
+            'timestamp': pd.Timestamp.now().isoformat(),
+            'model_type': self.model_type,
         }
         
-        # Add to detection history
-        self.detection_history.append({
-            'features': features,
-            'result': result
-        })
+        # Enhanced detection logging
+        detection_log = {
+            'timestamp': result['timestamp'],
+            'prediction': 'Ransomware' if pred == 1 else 'Benign',
+            'confidence': confidence,
+            'risk_level': result['risk_level'],
+            'model_type': self.model_type,
+            'behavioral_features': self._extract_behavioral_indicators(features),
+            'threat_classification': self._classify_threat(features, pred, confidence),
+            'features_snapshot': {k: v for k, v in features.items() if k in self.feature_columns[:10]}  # Top 10 features
+        }
+        
+        self.detection_history.append({'features': features, 'result': result})
+        self.detection_logs.append(detection_log)
+        
+        # Keep only last 1000 logs to prevent memory issues
+        if len(self.detection_logs) > 1000:
+            self.detection_logs = self.detection_logs[-1000:]
         
         return result
     
-    def _get_risk_level(self, confidence):
-        """Determine risk level based on confidence"""
-        if confidence > 0.8:
-            return "HIGH"
-        elif confidence > 0.6:
-            return "MEDIUM"
+    def _extract_behavioral_indicators(self, features: dict) -> dict:
+        """Extract key behavioral indicators from features"""
+        indicators = {
+            'file_modifications': features.get('ExportSize', 0) + features.get('ResourceSize', 0),
+            'system_calls': features.get('NumberOfSections', 0),
+            'directory_access': features.get('DebugRVA', 0),
+            'crypto_operations': features.get('BitcoinAddresses', 0),
+            'suspicious_activity_score': 0.0
+        }
+        
+        # Calculate suspicious activity score
+        score = 0.0
+        if indicators['crypto_operations'] > 0:
+            score += 0.3  # Bitcoin addresses indicate crypto operations
+        if indicators['file_modifications'] > 1000:
+            score += 0.3  # High file modification activity
+        if features.get('DllCharacteristics', 0) > 20000:
+            score += 0.2  # Suspicious DLL characteristics
+        if features.get('SizeOfStackReserve', 0) > 1048576:
+            score += 0.2  # Large stack reserve
+        
+        indicators['suspicious_activity_score'] = min(score, 1.0)
+        return indicators
+    
+    def _classify_threat(self, features: dict, prediction: int, confidence: float) -> str:
+        """Classify the threat level based on behavioral patterns"""
+        if prediction == 0:
+            return 'Normal'
+        
+        # Analyze behavioral patterns
+        crypto_ops = features.get('BitcoinAddresses', 0)
+        file_mods = features.get('ExportSize', 0) + features.get('ResourceSize', 0)
+        dll_chars = features.get('DllCharacteristics', 0)
+        
+        if crypto_ops > 0 and confidence > 0.8:
+            return 'High-Risk Crypto Ransomware'
+        elif file_mods > 5000 and confidence > 0.7:
+            return 'High-Risk File Encryption Ransomware'
+        elif dll_chars > 20000 and confidence > 0.6:
+            return 'Medium-Risk Suspicious Behavior'
+        elif confidence > 0.5:
+            return 'Low-Risk Potential Threat'
         else:
-            return "LOW"
+            return 'Uncertain - Needs Review'
+    
+    def ingest_system_logs(self, logs: list):
+        """Ingest and preprocess system behavior logs"""
+        try:
+            # Preprocess logs
+            processed_logs = []
+            for log in logs:
+                # Clean and format log entry
+                processed = {
+                    'timestamp': log.get('timestamp', pd.Timestamp.now().isoformat()),
+                    'event_type': log.get('event_type', 'unknown'),
+                    'behavioral_data': self._preprocess_behavioral_data(log.get('behavioral_data', {})),
+                    'raw_data': log
+                }
+                processed_logs.append(processed)
+            
+            self.system_logs.extend(processed_logs)
+            
+            # Keep only last 5000 logs
+            if len(self.system_logs) > 5000:
+                self.system_logs = self.system_logs[-5000:]
+            
+            return {'success': True, 'processed': len(processed_logs), 'total_logs': len(self.system_logs)}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+    
+    def _preprocess_behavioral_data(self, data: dict) -> dict:
+        """Preprocess behavioral data: cleaning and formatting"""
+        preprocessed = {}
+        
+        # Map common behavioral data to PE features
+        feature_mapping = {
+            'file_access_count': 'ExportSize',
+            'file_modifications': 'ResourceSize',
+            'system_calls': 'NumberOfSections',
+            'directory_access': 'DebugRVA',
+            'crypto_operations': 'BitcoinAddresses',
+            'process_count': 'Machine',
+            'registry_changes': 'IatVRA',
+            'memory_usage': 'SizeOfStackReserve',
+            'dll_characteristics': 'DllCharacteristics',
+            'debug_info': 'DebugSize'
+        }
+        
+        for key, value in data.items():
+            # Clean numeric values
+            if isinstance(value, (int, float)):
+                preprocessed[key] = float(value)
+            elif isinstance(value, str):
+                try:
+                    preprocessed[key] = float(value)
+                except:
+                    preprocessed[key] = 0.0
+            else:
+                preprocessed[key] = 0.0
+        
+        return preprocessed
+    
+    def get_detection_logs(self, limit: int = 100):
+        """Get detailed detection event logs"""
+        return self.detection_logs[-limit:] if limit else self.detection_logs
+    
+    def get_system_logs(self, limit: int = 100):
+        """Get system behavior logs"""
+        return self.system_logs[-limit:] if limit else self.system_logs
+    
+    def _risk_level(self, confidence: float) -> str:
+        if confidence > 0.8:
+            return 'HIGH'
+        if confidence > 0.6:
+            return 'MEDIUM'
+        return 'LOW'
     
     def get_detection_history(self):
-        """Get detection history"""
-        return self.detection_history[-50:]  # Last 50 detections
+        return self.detection_history[-50:]
     
     def get_dataset_stats(self):
-        """Get dataset statistics"""
-        if self.training_data is None:
+        if not self.dataset_loaded:
             return None
-        
         df = self.training_data
         return {
-            'total_samples': len(df),
-            'features': len(self.feature_columns),
-            'ransomware_samples': int(df['label'].sum()),
-            'benign_samples': int(len(df) - df['label'].sum()),
-            'feature_stats': df[self.feature_columns].describe().to_dict()
+            'total_samples': int(len(df)),
+            'features': int(len(self.feature_columns)),
+            'feature_stats': df[self.feature_columns].describe().to_dict(),
         }
 
-# Initialize detector
+
 detector = RansomwareDetector()
 
 @app.route('/')
@@ -186,12 +532,27 @@ def index():
 def train_models():
     """Train the machine learning models"""
     try:
-        performance = detector.train_models()
-        return jsonify({
-            'success': True,
-            'message': 'Models trained successfully',
-            'performance': performance
-        })
+        payload = request.get_json(silent=True) or {}
+        requested = (payload.get('model_type') or '').lower().strip() or None
+        try:
+            performance = detector.train_models(model_type=requested)
+            return jsonify({
+                'success': True,
+                'message': 'Models trained successfully',
+                'performance': performance
+            })
+        except Exception as e:
+            error_msg = str(e)
+            # Provide helpful error message
+            if 'TensorFlow' in error_msg or 'tensorflow' in error_msg.lower():
+                return jsonify({
+                    'success': False,
+                    'message': f'Training failed: {error_msg}. Install TensorFlow with: pip install tensorflow'
+                })
+            return jsonify({
+                'success': False,
+                'message': f'Training failed: {error_msg}'
+            })
     except Exception as e:
         return jsonify({
             'success': False,
@@ -260,6 +621,182 @@ def model_performance():
             'success': False,
             'message': f'Failed to get performance: {str(e)}'
         })
+
+@app.route('/api/feature-columns')
+def feature_columns():
+    try:
+        return jsonify({
+            'success': True,
+            'features': detector.feature_columns
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/ingest-logs', methods=['POST'])
+def ingest_logs():
+    """Ingest and preprocess system behavior logs"""
+    try:
+        data = request.get_json()
+        logs = data.get('logs', [])
+        
+        if not logs:
+            return jsonify({'success': False, 'message': 'No logs provided'})
+        
+        result = detector.ingest_system_logs(logs)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Ingestion failed: {str(e)}'})
+
+@app.route('/api/classify-realtime', methods=['POST'])
+def classify_realtime():
+    """Real-time classification of system behavior"""
+    try:
+        behavioral_data = request.get_json()
+        
+        if not behavioral_data:
+            return jsonify({'success': False, 'message': 'No behavioral data provided'})
+        
+        # Preprocess behavioral data to extract features
+        preprocessed = detector._preprocess_behavioral_data(behavioral_data)
+        
+        # Map to expected feature format
+        features = {}
+        for col in detector.feature_columns:
+            # Try direct mapping first
+            if col in preprocessed:
+                features[col] = preprocessed[col]
+            else:
+                # Use default mapping or 0
+                features[col] = 0.0
+        
+        # Classify
+        result = detector.predict(features)
+        
+        # Return with behavioral indicators
+        behavioral_indicators = detector._extract_behavioral_indicators(features)
+        threat_classification = detector._classify_threat(features, result['prediction'], result['confidence'])
+        
+        return jsonify({
+            'success': True,
+            'result': result,
+            'behavioral_indicators': behavioral_indicators,
+            'threat_classification': threat_classification,
+            'recommendation': 'IMMEDIATE_ACTION' if result['prediction'] == 1 and result['confidence'] > 0.8 else 'MONITOR' if result['prediction'] == 1 else 'NORMAL'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Classification failed: {str(e)}'})
+
+@app.route('/api/detection-logs')
+def get_detection_logs():
+    """Get detailed detection event logs"""
+    try:
+        limit = request.args.get('limit', 100, type=int)
+        logs = detector.get_detection_logs(limit)
+        return jsonify({
+            'success': True,
+            'logs': logs,
+            'total': len(logs)
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/system-logs')
+def get_system_logs():
+    """Get system behavior logs"""
+    try:
+        limit = request.args.get('limit', 100, type=int)
+        logs = detector.get_system_logs(limit)
+        return jsonify({
+            'success': True,
+            'logs': logs,
+            'total': len(logs)
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/upload-csv', methods=['POST'])
+def upload_csv():
+    """Upload and analyze CSV dataset"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'message': 'No file provided'})
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'message': 'No file selected'})
+        
+        # Read CSV
+        stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
+        df_uploaded = pd.read_csv(stream)
+        
+        # Check for required features
+        if not detector.feature_columns:
+            # Load default dataset to get feature names
+            detector.load_kaggle_dataset()
+        
+        # Find matching columns
+        available_features = [f for f in detector.feature_columns if f in df_uploaded.columns]
+        missing_features = [f for f in detector.feature_columns if f not in df_uploaded.columns]
+        
+        # Prepare preview data (first 10 rows, only available features)
+        preview_data = df_uploaded[available_features].head(10).to_dict(orient='records')
+        
+        # Statistics
+        stats = {
+            'total_rows': int(len(df_uploaded)),
+            'available_features': len(available_features),
+            'missing_features': len(missing_features),
+            'available_feature_names': available_features,
+            'missing_feature_names': missing_features,
+        }
+        
+        return jsonify({
+            'success': True,
+            'message': f'CSV uploaded: {len(df_uploaded)} rows, {len(available_features)}/{len(detector.feature_columns)} features found',
+            'preview': preview_data,
+            'stats': stats,
+            'columns': list(df_uploaded.columns)
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Upload failed: {str(e)}'})
+
+@app.route('/api/feature-importance')
+def feature_importance():
+    try:
+        imp = detector.model_performance.get('feature_importance') if detector.model_performance else None
+        return jsonify({'success': True, 'importance': imp, 'model_type': detector.model_type})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/flow')
+def flow_definitions():
+    try:
+        data = {
+            'use_cases': [
+                'Detect Ransomware', 'Monitor System Behaviour', 'View Detection Reports',
+                'Train ML model', 'Configure Detection Rules', 'Monitor System Performance',
+                'Manage System Settings', 'View Security Status', 'Receive Protection', 'Conduct Research'
+            ],
+            'activity_steps': [
+                'start', 'use detection model', 'monitor file access', 'suspicious activity?',
+                'analyze behaviours', 'apply detection rules', 'ransomware detected?',
+                'generate the report', 'notify the user', 'display security status', 'end'
+            ],
+            'sequence': [
+                {'from':'User','to':'DetectionEngine','action':'start detecting'},
+                {'from':'DetectionEngine','to':'SystemMonitor','action':'start monitoring'},
+                {'from':'SystemMonitor','to':'Activity','action':'monitoring file access'},
+                {'from':'Activity','to':'SystemMonitor','action':'returns if file operations detected'},
+                {'from':'DetectionEngine','to':'DetectionEngine','action':'apply detection rules'},
+                {'from':'DetectionEngine','to':'ReportGenerator','action':'generates detection report'},
+                {'from':'ReportGenerator','to':'DetectionEngine','action':'retrieve detection reports'},
+                {'from':'DetectionEngine','to':'User','action':'notify users about the threat'},
+                {'from':'User','to':'DetectionEngine','action':'views security status'}
+            ]
+        }
+        return jsonify({'success': True, 'flow': data})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
 
 if __name__ == '__main__':
     # Create templates directory if it doesn't exist
