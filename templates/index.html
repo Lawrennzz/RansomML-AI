@@ -403,7 +403,7 @@
                     // Render visualizations in train model section
                     await ensureChartJsLoaded();
                     renderTrainConfusionMatrix(perf.confusion_matrix || [[0,0],[0,0]]);
-                    await renderTrainFeatureImportance();
+                    renderTrainFeatureImportanceFromData(perf);
                     
                     // Also update general visualizations if in visualizations view
                     renderConfusionMatrix(perf.confusion_matrix || [[0,0],[0,0]]);
@@ -458,37 +458,139 @@
         async function renderFeatureImportance() {
             try {
                 const imp = await fetchJSON('/api/feature-importance');
-                const kv = imp.importance ? Object.entries(imp.importance) : [];
+                const canvas = document.getElementById('fiChart');
+                if (!canvas) return;
+                
+                // Check if feature importance is available
+                if (!imp.importance || Object.keys(imp.importance).length === 0) {
+                    fiChart && fiChart.destroy();
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.font = '14px Arial';
+                    ctx.fillStyle = '#666';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Feature Importance not available', canvas.width / 2, canvas.height / 2 - 10);
+                    ctx.fillText('for ' + (imp.model_type || 'this model type'), canvas.width / 2, canvas.height / 2 + 10);
+                    return;
+                }
+                
+                const kv = Object.entries(imp.importance);
                 kv.sort((a,b)=>b[1]-a[1]);
                 const top = kv.slice(0, 10);
                 const labels = top.map(x=>x[0]);
                 const values = top.map(x=>x[1]);
-                const canvas = document.getElementById('fiChart');
-                if (!canvas) return;
+                
+                if (labels.length === 0 || values.length === 0) {
+                    return;
+                }
+                
                 const ctx = canvas.getContext('2d');
                 fiChart && fiChart.destroy();
-                fiChart = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: 'Importance', data: values, backgroundColor: 'rgba(16, 185, 129, 0.8)'}]}, options: { indexAxis: 'y', plugins: { legend: { display: false }}}});
-            } catch {
-                // ignore
+                fiChart = new Chart(ctx, { 
+                    type: 'bar', 
+                    data: { 
+                        labels, 
+                        datasets: [{ 
+                            label: 'Importance', 
+                            data: values, 
+                            backgroundColor: 'rgba(16, 185, 129, 0.8)'
+                        }]
+                    }, 
+                    options: { 
+                        indexAxis: 'y', 
+                        plugins: { 
+                            legend: { display: false }
+                        },
+                        scales: {
+                            x: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error('Error rendering feature importance:', e);
             }
         }
 
-        // Render feature importance for train model view
-        async function renderTrainFeatureImportance() {
+        // Render feature importance for train model view from performance data
+        function renderTrainFeatureImportanceFromData(perf) {
             try {
-                const imp = await fetchJSON('/api/feature-importance');
-                const kv = imp.importance ? Object.entries(imp.importance) : [];
+                const canvas = document.getElementById('train-fiChart');
+                if (!canvas) return;
+                
+                // Check if feature importance is available
+                if (!perf.feature_importance || Object.keys(perf.feature_importance).length === 0) {
+                    // Clear any existing chart
+                    trainFiChart && trainFiChart.destroy();
+                    
+                    // Show message that feature importance is not available
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.font = '14px Arial';
+                    ctx.fillStyle = '#666';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Feature Importance not available', canvas.width / 2, canvas.height / 2 - 10);
+                    ctx.fillText('for ' + (perf.model_type || 'this model type'), canvas.width / 2, canvas.height / 2 + 10);
+                    ctx.fillText('(Only Random Forest supports this)', canvas.width / 2, canvas.height / 2 + 30);
+                    return;
+                }
+                
+                const kv = Object.entries(perf.feature_importance);
                 kv.sort((a,b)=>b[1]-a[1]);
                 const top = kv.slice(0, 10);
                 const labels = top.map(x=>x[0]);
                 const values = top.map(x=>x[1]);
-                const canvas = document.getElementById('train-fiChart');
-                if (!canvas) return;
+                
+                if (labels.length === 0 || values.length === 0) {
+                    return;
+                }
+                
                 const ctx = canvas.getContext('2d');
                 trainFiChart && trainFiChart.destroy();
-                trainFiChart = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: 'Importance', data: values, backgroundColor: 'rgba(16, 185, 129, 0.8)'}]}, options: { indexAxis: 'y', plugins: { legend: { display: false }}}});
-            } catch {
-                // ignore
+                trainFiChart = new Chart(ctx, { 
+                    type: 'bar', 
+                    data: { 
+                        labels, 
+                        datasets: [{ 
+                            label: 'Importance', 
+                            data: values, 
+                            backgroundColor: 'rgba(16, 185, 129, 0.8)'
+                        }]
+                    }, 
+                    options: { 
+                        indexAxis: 'y', 
+                        plugins: { 
+                            legend: { display: false }
+                        },
+                        scales: {
+                            x: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error('Error rendering feature importance:', e);
+                const canvas = document.getElementById('train-fiChart');
+                if (canvas) {
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.font = '14px Arial';
+                    ctx.fillStyle = '#666';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Error loading feature importance', canvas.width / 2, canvas.height / 2);
+                }
+            }
+        }
+
+        // Render feature importance for train model view (from API)
+        async function renderTrainFeatureImportance() {
+            try {
+                const imp = await fetchJSON('/api/feature-importance');
+                renderTrainFeatureImportanceFromData({ feature_importance: imp.importance, model_type: imp.model_type });
+            } catch (e) {
+                console.error('Error fetching feature importance:', e);
             }
         }
 
