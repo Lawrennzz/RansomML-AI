@@ -8,8 +8,10 @@ import os
 import json
 import pandas as pd
 import numpy as np
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
+from functools import wraps
 import io
 import time
 from sklearn.ensemble import RandomForestClassifier
@@ -44,6 +46,123 @@ except Exception:
 
 app = Flask(__name__)
 app.secret_key = 'ransomware_detection_secret_key_2025'
+
+# Role definitions based on UML Use Case Diagram
+ROLES = {
+    'cybersecurity_professional': {
+        'name': 'Cybersecurity Professional',
+        'permissions': ['detect_ransomware', 'monitor_system_behavior', 'view_detection_reports', 'train_ml_model', 'configure_detection_rules']
+    },
+    'it_administrator': {
+        'name': 'IT Administrator',
+        'permissions': ['train_ml_model', 'configure_detection_rules', 'monitor_system_performance', 'manage_system_settings']
+    },
+    'system_user': {
+        'name': 'System User',
+        'permissions': ['view_security_status', 'receive_protection', 'predict']  # Basic users can use prediction
+    },
+    'academic_researcher': {
+        'name': 'Academic Researcher',
+        'permissions': ['conduct_research', 'view_detection_reports', 'train_ml_model', 'view_visualizations', 'view_dataset_stats']
+    }
+}
+
+# Simple user database (in production, use proper database)
+USERS_DB_FILE = 'users.json'
+
+def load_users():
+    """Load users from JSON file"""
+    if os.path.exists(USERS_DB_FILE):
+        try:
+            with open(USERS_DB_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
+def save_users(users):
+    """Save users to JSON file"""
+    with open(USERS_DB_FILE, 'w') as f:
+        json.dump(users, f, indent=2)
+
+def init_default_users():
+    """Initialize default users if database is empty"""
+    users = load_users()
+    if not users:
+        default_users = {
+            'cyber_pro@example.com': {
+                'username': 'cyber_pro',
+                'password': generate_password_hash('cyber123'),
+                'role': 'cybersecurity_professional',
+                'full_name': 'Security Expert'
+            },
+            'admin@example.com': {
+                'username': 'admin',
+                'password': generate_password_hash('admin123'),
+                'role': 'it_administrator',
+                'full_name': 'IT Admin'
+            },
+            'user@example.com': {
+                'username': 'user',
+                'password': generate_password_hash('user123'),
+                'role': 'system_user',
+                'full_name': 'System User'
+            },
+            'researcher@example.com': {
+                'username': 'researcher',
+                'password': generate_password_hash('research123'),
+                'role': 'academic_researcher',
+                'full_name': 'Research Scholar'
+            }
+        }
+        save_users(default_users)
+        return default_users
+    return users
+
+# Initialize default users
+USERS = init_default_users()
+
+def require_role(*allowed_roles):
+    """Decorator to require specific roles for routes"""
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if 'user_id' not in session:
+                return jsonify({'success': False, 'message': 'Authentication required'}), 401
+            
+            user = USERS.get(session.get('user_id'))
+            if not user:
+                return jsonify({'success': False, 'message': 'User not found'}), 401
+            
+            user_role = user.get('role')
+            if user_role not in allowed_roles and 'all' not in allowed_roles:
+                return jsonify({'success': False, 'message': f'Access denied. Required roles: {", ".join(allowed_roles)}'}), 403
+            
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+def require_permission(permission):
+    """Decorator to require specific permission for routes"""
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if 'user_id' not in session:
+                return jsonify({'success': False, 'message': 'Authentication required'}), 401
+            
+            user = USERS.get(session.get('user_id'))
+            if not user:
+                return jsonify({'success': False, 'message': 'User not found'}), 401
+            
+            user_role = user.get('role')
+            role_permissions = ROLES.get(user_role, {}).get('permissions', [])
+            
+            if permission not in role_permissions:
+                return jsonify({'success': False, 'message': f'Permission denied. Required permission: {permission}'}), 403
+            
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
 
 
 class RansomwareDetector:
@@ -556,9 +675,67 @@ detector = RansomwareDetector()
 @app.route('/')
 def index():
     """Main dashboard page"""
-    return render_template('index.html')
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    return render_template('index.html', user=USERS.get(session.get('user_id')), roles=ROLES)
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """Login page"""
+    if request.method == 'POST':
+        data = request.get_json() or {}
+        email = data.get('email', '').lower().strip()
+        password = data.get('password', '')
+        
+        user = USERS.get(email)
+        if user and check_password_hash(user['password'], password):
+            session['user_id'] = email
+            session['user_role'] = user['role']
+            session['username'] = user['username']
+            return jsonify({
+                'success': True,
+                'message': 'Login successful',
+                'user': {
+                    'email': email,
+                    'username': user['username'],
+                    'role': user['role'],
+                    'role_name': ROLES[user['role']]['name']
+                }
+            })
+        else:
+            return jsonify({'success': False, 'message': 'Invalid email or password'}), 401
+    
+    return render_template('login.html', roles=ROLES)
+
+@app.route('/logout')
+def logout():
+    """Logout"""
+    session.clear()
+    return redirect(url_for('login'))
+
+@app.route('/api/current-user')
+def current_user():
+    """Get current logged in user"""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not logged in'}), 401
+    
+    user = USERS.get(session.get('user_id'))
+    if user:
+        role_info = ROLES.get(user['role'], {})
+        return jsonify({
+            'success': True,
+            'user': {
+                'email': session['user_id'],
+                'username': user['username'],
+                'role': user['role'],
+                'role_name': role_info.get('name', 'Unknown'),
+                'permissions': role_info.get('permissions', [])
+            }
+        })
+    return jsonify({'success': False, 'message': 'User not found'}), 404
 
 @app.route('/api/train', methods=['POST'])
+@require_permission('train_ml_model')
 def train_models():
     """Train the machine learning models"""
     try:
@@ -591,7 +768,9 @@ def train_models():
 
 @app.route('/api/predict', methods=['POST'])
 def predict():
-    """Make prediction on input features"""
+    """Make prediction on input features - available to all authenticated users"""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Authentication required'}), 401
     try:
         features = request.json
         result = detector.predict(features)
@@ -621,6 +800,7 @@ def dataset_stats():
         })
 
 @app.route('/api/detection-history')
+@require_permission('view_detection_reports')
 def detection_history():
     """Get detection history"""
     try:
@@ -663,6 +843,7 @@ def feature_columns():
         return jsonify({'success': False, 'message': str(e)})
 
 @app.route('/api/ingest-logs', methods=['POST'])
+@require_permission('monitor_system_behavior')
 def ingest_logs():
     """Ingest and preprocess system behavior logs"""
     try:
@@ -731,6 +912,7 @@ def get_detection_logs():
         return jsonify({'success': False, 'message': str(e)})
 
 @app.route('/api/system-logs')
+@require_permission('monitor_system_performance')
 def get_system_logs():
     """Get system behavior logs"""
     try:

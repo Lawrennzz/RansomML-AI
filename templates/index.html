@@ -37,23 +37,33 @@
                     <li class="nav-item">
                         <a class="nav-link" href="#dashboard">Dashboard</a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item" data-permission="train_ml_model">
                         <a class="nav-link" href="#train-model">Train Model</a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item" data-permission="train_ml_model">
                         <a class="nav-link" href="#upload-csv">Upload CSV</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="#predict">Predict</a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item" data-permission="monitor_system_behavior">
                         <a class="nav-link" href="#realtime">Real-Time</a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item" data-permission="view_detection_reports">
                         <a class="nav-link" href="#logs">Detection Logs</a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item" data-permission="conduct_research">
                         <a class="nav-link" href="#visualizations">Visualizations</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span id="user-display">User</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><h6 class="dropdown-header"><span id="user-role-display">Role</span></h6></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="/logout">Logout</a></li>
+                        </ul>
                     </li>
                 </ul>
             </div>
@@ -871,6 +881,36 @@
 
         handleInitialView(); // Set initial view
 
+        // Load user info and set up role-based UI
+        async function loadUserInfo() {
+            try {
+                const response = await fetch('/api/current-user');
+                const data = await response.json();
+                if (data.success && data.user) {
+                    const user = data.user;
+                    document.getElementById('user-display').textContent = user.username || user.email;
+                    document.getElementById('user-role-display').textContent = user.role_name || user.role;
+                    
+                    // Hide/show nav items based on permissions
+                    document.querySelectorAll('[data-permission]').forEach(item => {
+                        const permission = item.getAttribute('data-permission');
+                        if (!user.permissions.includes(permission)) {
+                            item.style.display = 'none';
+                        } else {
+                            item.style.display = 'block';
+                        }
+                    });
+                } else {
+                    // Not logged in, redirect to login
+                    window.location.href = '/login';
+                }
+            } catch (error) {
+                console.error('Error loading user info:', error);
+                window.location.href = '/login';
+            }
+        }
+
+        loadUserInfo();
         loadFeatures();
         refreshStats();
     </script>

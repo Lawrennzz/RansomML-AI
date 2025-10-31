@@ -1,0 +1,26 @@
+{
+  "cyber_pro@example.com": {
+    "username": "cyber_pro",
+    "password": "scrypt:32768:8:1$QiXTJcVummOMA6WI$1b19deefdffbb32e8b0e1cb6249e6992ed9520edc689f82d2dc9d8f53fa27796f81cb2cd189f6f54fabd253bc85b781b5a4eeac39a7c9c2c1de23093c5ab761c",
+    "role": "cybersecurity_professional",
+    "full_name": "Security Expert"
+  },
+  "admin@example.com": {
+    "username": "admin",
+    "password": "scrypt:32768:8:1$VElE56xjfSzGLDkW$5e4e55fd46b974f31b38c41fcc92dd5543e2f52541549435dc3ae552d445e710e3afe7364bf160f41b7f0795454260e711dce90ce48187d2ad92253e05d2a6a1",
+    "role": "it_administrator",
+    "full_name": "IT Admin"
+  },
+  "user@example.com": {
+    "username": "user",
+    "password": "scrypt:32768:8:1$XRSSYTZOwnG4HTr4$86b40c3326fcffbb016d735b75bff6d87718ff7ba961f5e2d44f6d82a15b21df057b7813c1c963867de8ce5e0bb6ef67a93b4dc171a39ac4af739c1dadb20727",
+    "role": "system_user",
+    "full_name": "System User"
+  },
+  "researcher@example.com": {
+    "username": "researcher",
+    "password": "scrypt:32768:8:1$LbnkAl65wZEp5ZHF$13f4d466306ec3316762369fe91c63976b13d38b2e2f562903139e0b468e790704111d295fe3671fed41aa77a2caf49f902319edada5470596a8cfb7fd9e608a",
+    "role": "academic_researcher",
+    "full_name": "Research Scholar"
+  }
+}
