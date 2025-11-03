@@ -183,6 +183,19 @@ The notebook provides a comprehensive analysis environment with:
 - **Scalability**: Flexible for enterprise or cloud deployments; supports larger datasets and higher throughput.
 - **Data security and privacy**: All behavioral logs and user data are processed securely and protected from unauthorized access.
 
+### How the system enforces these
+
+- **Accuracy & F1**: Training returns precision/recall/F1; use `/api/model-performance` to verify metrics. Confusion matrix and feature importance included.
+- **Low FP/FN**: Multiple model options and rule-based recommendations reduce misses and false alarms.
+- **Resource efficiency**: Caps BLAS/OMP threads (≤4 by default) and limits uploads to 10MB.
+- **Real-time responsiveness**: `/api/predict` and `/api/classify-realtime` return `processing_time_ms` and `sla_met` (≤2000 ms budget). Rolling averages via `metrics`.
+- **Scalability**: Stateless APIs; suitable for container/cloud deployment.
+- **Security & privacy**: Secure headers (CSP, no-sniff, frame deny), HttpOnly cookies, and role-based access; logs protected by permissions.
+
+Additional endpoints:
+- `GET /api/health` – readiness and SLA status with rolling latency metrics
+- `GET /api/model-performance` – performance + rolling `metrics`
+
 
 ## 🚀 **Installation & Setup**
 

@@ -24,6 +24,17 @@ from sklearn.inspection import permutation_importance
 import warnings
 
 warnings.filterwarnings('ignore')
+# Cap computational threads for resource efficiency
+try:
+    import multiprocessing
+    cpu_cap = max(1, min((multiprocessing.cpu_count() or 2), 4))
+    os.environ.setdefault('OMP_NUM_THREADS', str(cpu_cap))
+    os.environ.setdefault('OPENBLAS_NUM_THREADS', str(cpu_cap))
+    os.environ.setdefault('MKL_NUM_THREADS', str(cpu_cap))
+    os.environ.setdefault('VECLIB_MAXIMUM_THREADS', str(cpu_cap))
+    os.environ.setdefault('NUMEXPR_NUM_THREADS', str(cpu_cap))
+except Exception:
+    pass
 try:
     from reportlab.lib.pagesizes import letter
     from reportlab.lib import colors
@@ -53,6 +64,12 @@ except Exception:
 
 app = Flask(__name__)
 app.secret_key = 'ransomware_detection_secret_key_2025'
+
+# Security & limits
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = False  # set True when serving over HTTPS
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 MB upload limit
 
 # Simple JSON storage for rules and settings
 RULES_DB_FILE = 'rules.json'
@@ -265,6 +282,12 @@ class RansomwareDetector:
         self.model_type = 'rf'
         self.system_logs = []  # Store system behavior logs
         self.detection_logs = []  # Detailed detection event logs
+        self.metrics = {
+            'predict_count': 0,
+            'total_latency_ms': 0.0,
+            'last_latency_ms': 0.0,
+            'max_latency_ms': 0.0
+        }
 
     def load_kaggle_dataset(self, file_path: str = "data_file.csv"):
         """Load dataset from local CSV file first, fallback to kagglehub if needed"""
@@ -626,6 +649,25 @@ class RansomwareDetector:
             self.detection_logs = self.detection_logs[-1000:]
         
         return result
+
+    def record_latency(self, elapsed_ms: float):
+        try:
+            self.metrics['predict_count'] += 1
+            self.metrics['total_latency_ms'] += float(elapsed_ms)
+            self.metrics['last_latency_ms'] = float(elapsed_ms)
+            self.metrics['max_latency_ms'] = max(self.metrics['max_latency_ms'], float(elapsed_ms))
+        except Exception:
+            pass
+
+    def get_metrics(self):
+        count = self.metrics.get('predict_count', 0) or 0
+        avg = (self.metrics.get('total_latency_ms', 0.0) / count) if count > 0 else 0.0
+        return {
+            'predict_count': int(count),
+            'avg_latency_ms': float(avg),
+            'last_latency_ms': float(self.metrics.get('last_latency_ms', 0.0)),
+            'max_latency_ms': float(self.metrics.get('max_latency_ms', 0.0))
+        }
     
     def _extract_behavioral_indicators(self, features: dict) -> dict:
         """Extract key behavioral indicators from features"""
@@ -904,11 +946,16 @@ def predict():
     if 'user_id' not in session:
         return jsonify({'success': False, 'message': 'Authentication required'}), 401
     try:
-        features = request.json
+        t0 = time.time()
+        features = request.json or {}
         result = detector.predict(features)
+        elapsed_ms = (time.time() - t0) * 1000.0
+        detector.record_latency(elapsed_ms)
         return jsonify({
             'success': True,
-            'result': result
+            'result': result,
+            'processing_time_ms': round(elapsed_ms, 2),
+            'sla_met': elapsed_ms <= 2000.0
         })
     except Exception as e:
         return jsonify({
@@ -956,7 +1003,8 @@ def model_performance():
         
         return jsonify({
             'success': True,
-            'performance': detector.model_performance
+            'performance': detector.model_performance,
+            'metrics': detector.get_metrics()
         })
     except Exception as e:
         return jsonify({
@@ -1013,7 +1061,10 @@ def classify_realtime():
                 features[col] = 0.0
         
         # Classify
+        t0 = time.time()
         result = detector.predict(features)
+        elapsed_ms = (time.time() - t0) * 1000.0
+        detector.record_latency(elapsed_ms)
 
         # Evaluate rules for recommendation
         matched_rules, recommendation = detector.evaluate_rules(
@@ -1030,7 +1081,9 @@ def classify_realtime():
             'behavioral_indicators': behavioral_indicators,
             'threat_classification': threat_classification,
             'recommendation': recommendation,
-            'matched_rules': matched_rules
+            'matched_rules': matched_rules,
+            'processing_time_ms': round(elapsed_ms, 2),
+            'sla_met': elapsed_ms <= 2000.0
         })
     except Exception as e:
         return jsonify({'success': False, 'message': f'Classification failed: {str(e)}'})
@@ -1366,7 +1419,7 @@ def upload_csv():
 def feature_importance():
     try:
         imp = detector.model_performance.get('feature_importance') if detector.model_performance else None
-        return jsonify({'success': True, 'importance': imp, 'model_type': detector.model_type})
+        return jsonify({'success': True, 'importance': imp, 'model_type': detector.model_type, 'metrics': detector.get_metrics()})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
 
@@ -1399,6 +1452,29 @@ def flow_definitions():
         return jsonify({'success': True, 'flow': data})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
+
+@app.after_request
+def add_security_headers(response):
+    try:
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['X-Frame-Options'] = 'DENY'
+        response.headers['Referrer-Policy'] = 'no-referrer'
+        response.headers['Cache-Control'] = 'no-store'
+        # Basic CSP; adjust as needed for production assets
+        response.headers['Content-Security-Policy'] = "default-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.jsdelivr.net/npm; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.jsdelivr.net/npm; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.jsdelivr.net/npm; img-src 'self' data:"
+    except Exception:
+        pass
+    return response
+
+@app.route('/api/health')
+def health():
+    try:
+        metrics = detector.get_metrics()
+        sla_ok = metrics.get('avg_latency_ms', 0.0) <= 2000.0
+        ready = detector.model is not None and detector.scaler is not None
+        return jsonify({'success': True, 'status': 'ok', 'ready': ready, 'sla_ok': sla_ok, 'metrics': metrics})
+    except Exception as e:
+        return jsonify({'success': False, 'status': 'error', 'message': str(e)}), 500
 
 if __name__ == '__main__':
     # Create templates directory if it doesn't exist
