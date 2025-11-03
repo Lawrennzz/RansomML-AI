@@ -71,6 +71,30 @@ def _write_json_file(path, data):
     with open(path, 'w') as f:
         json.dump(data, f, indent=2)
 
+def _safe_float(value, default=0.0):
+    try:
+        if isinstance(value, str):
+            v = value.strip().replace('%', '')
+            return float(v)
+        return float(value)
+    except Exception:
+        return float(default)
+
+def _safe_int(value, default=0):
+    try:
+        if isinstance(value, str):
+            v = value.strip().lower()
+            if v in ('ransomware', 'true', 'yes'):
+                return 1
+            if v == 'benign':
+                return 0
+            if v == '':
+                return int(default)
+            return int(float(v))
+        return int(value)
+    except Exception:
+        return int(default)
+
 # Role definitions based on UML Use Case Diagram
 ROLES = {
     'cybersecurity_professional': {
@@ -446,8 +470,14 @@ class RansomwareDetector:
         
         values = []
         for col in self.feature_columns:
-            values.append(features.get(col, 0))
-        arr = np.array(values).reshape(1, -1)
+            raw_val = features.get(col, 0)
+            try:
+                # robustly coerce to float; fallback to 0.0
+                coerced = float(raw_val)
+            except Exception:
+                coerced = 0.0
+            values.append(coerced)
+        arr = np.array(values, dtype=float).reshape(1, -1)
         arr_scaled = self.scaler.transform(arr)
 
         # Predict based on model type
@@ -744,16 +774,16 @@ class RansomwareDetector:
             conds = rule.get('conditions', {}) or {}
             ok = True
             for feat, comp in conds.items():
-                val = float(features.get(feat, 0) or 0)
-                if 'gt' in comp and not (val > float(comp['gt'])):
+                val = _safe_float(features.get(feat, 0) or 0)
+                if 'gt' in comp and not (val > _safe_float(comp.get('gt', 0))):
                     ok = False; break
-                if 'gte' in comp and not (val >= float(comp['gte'])):
+                if 'gte' in comp and not (val >= _safe_float(comp.get('gte', 0))):
                     ok = False; break
-                if 'lt' in comp and not (val < float(comp['lt'])):
+                if 'lt' in comp and not (val < _safe_float(comp.get('lt', 0))):
                     ok = False; break
-                if 'lte' in comp and not (val <= float(comp['lte'])):
+                if 'lte' in comp and not (val <= _safe_float(comp.get('lte', 0))):
                     ok = False; break
-                if 'eq' in comp and not (val == float(comp['eq'])):
+                if 'eq' in comp and not (val == _safe_float(comp.get('eq', 0))):
                     ok = False; break
             if ok:
                 matched.append({'id': rule.get('id'), 'name': rule.get('name')})
@@ -762,9 +792,10 @@ class RansomwareDetector:
                     recommendation = rule.get('recommendation')
         # Fallback to confidence thresholds if no rule matched
         if recommendation is None and prediction == 1:
-            if confidence >= SETTINGS.get('min_confidence_for_immediate', 0.80):
+            conf_val = _safe_float(confidence, 0.0)
+            if conf_val >= _safe_float(SETTINGS.get('min_confidence_for_immediate', 0.80)):
                 recommendation = 'IMMEDIATE_ACTION'
-            elif confidence >= SETTINGS.get('min_confidence_for_monitor', 0.60):
+            elif conf_val >= _safe_float(SETTINGS.get('min_confidence_for_monitor', 0.60)):
                 recommendation = 'MONITOR'
         if recommendation is None:
             recommendation = 'NORMAL'
@@ -1094,7 +1125,7 @@ def download_detection_report_pdf():
             c.drawString(40, y, str(item.get('timestamp', '') )[:19])
             c.drawString(200, y, str(item.get('prediction', '')))
             c.drawString(290, y, str(item.get('risk_level', '')))
-            c.drawString(360, y, f"{float(item.get('confidence', 0))*100:.1f}%")
+            c.drawString(360, y, f"{_safe_float(item.get('confidence', 0))*100:.1f}%")
             c.drawString(450, y, str(item.get('model_type', '')))
             y -= 14
 
@@ -1114,7 +1145,7 @@ def download_single_prediction_pdf():
         if not REPORTLAB_AVAILABLE:
             return jsonify({'success': False, 'message': 'PDF generation not available. Install reportlab.'}), 501
         payload = request.get_json() or {}
-        result = payload.get('result', {})
+        result = payload.get('result', {}) or {}
         indicators = payload.get('behavioral_indicators', {})
         threat = payload.get('threat_classification', '')
         recommendation = payload.get('recommendation', 'NORMAL')
@@ -1135,25 +1166,30 @@ def download_single_prediction_pdf():
         c.drawString(40, y, "Summary")
         y -= 18
         c.setFont("Helvetica", 10)
-        pred_txt = 'RANSOMWARE' if int(result.get('prediction', 0)) == 1 else 'BENIGN'
-        conf_pct = float(result.get('confidence', 0))*100.0
-        c.drawString(40, y, f"Prediction: {pred_txt} | Confidence: {conf_pct:.2f}% | Risk: {result.get('risk_level','')}")
+        pred_val = _safe_int(result.get('prediction', 0))
+        pred_txt = 'RANSOMWARE' if pred_val == 1 else 'BENIGN'
+        benign_prob = _safe_float(result.get('benign_probability', 0))
+        ransom_prob = _safe_float(result.get('ransomware_probability', 0))
+        confidence_val = _safe_float(result.get('confidence', max(benign_prob, ransom_prob)))
+        conf_pct = confidence_val * 100.0
+        risk_txt = str(result.get('risk_level','') or '')
+        c.drawString(40, y, f"Prediction: {pred_txt} | Confidence: {conf_pct:.2f}% | Risk: {risk_txt}")
         y -= 16
-        c.drawString(40, y, f"Model: {result.get('model_type','')} | Timestamp: {str(result.get('timestamp',''))[:19]}")
+        c.drawString(40, y, f"Model: {str(result.get('model_type','') or '')} | Timestamp: {str(result.get('timestamp','') or '')[:19]}")
         y -= 24
 
         c.setFont("Helvetica-Bold", 12)
         c.drawString(40, y, "Recommendation")
         y -= 16
         c.setFont("Helvetica", 10)
-        c.drawString(40, y, f"{recommendation}")
+        c.drawString(40, y, f"{recommendation or ''}")
         y -= 24
 
         c.setFont("Helvetica-Bold", 12)
         c.drawString(40, y, "Threat Classification")
         y -= 16
         c.setFont("Helvetica", 10)
-        c.drawString(40, y, f"{threat}")
+        c.drawString(40, y, f"{threat or ''}")
         y -= 24
 
         # Probabilities
@@ -1161,7 +1197,7 @@ def download_single_prediction_pdf():
         c.drawString(40, y, "Probabilities")
         y -= 16
         c.setFont("Helvetica", 10)
-        c.drawString(40, y, f"Benign: {float(result.get('benign_probability',0))*100:.1f}%  |  Ransomware: {float(result.get('ransomware_probability',0))*100:.1f}%")
+        c.drawString(40, y, f"Benign: {benign_prob*100:.1f}%  |  Ransomware: {ransom_prob*100:.1f}%")
         y -= 24
 
         # Behavioral indicators
@@ -1174,7 +1210,9 @@ def download_single_prediction_pdf():
                 c.showPage(); y = height - 50; c.setFont("Helvetica", 10)
             v = indicators.get(k, '')
             if k == 'suspicious_activity_score':
-                v = f"{float(v)*100:.1f}%"
+                v = f"{_safe_float(v, 0.0)*100:.1f}%"
+            else:
+                v = str(v) if v != '' else '0'
             c.drawString(40, y, f"- {k.replace('_',' ').title()}: {v}")
             y -= 14
 
