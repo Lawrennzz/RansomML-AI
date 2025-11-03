@@ -1,0 +1,5 @@
+{
+  "min_confidence_for_immediate": 0.8,
+  "min_confidence_for_monitor": 0.6
+}
+

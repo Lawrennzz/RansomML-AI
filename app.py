@@ -47,6 +47,23 @@ except Exception:
 app = Flask(__name__)
 app.secret_key = 'ransomware_detection_secret_key_2025'
 
+# Simple JSON storage for rules and settings
+RULES_DB_FILE = 'rules.json'
+SETTINGS_DB_FILE = 'settings.json'
+
+def _read_json_file(path, default):
+    try:
+        if os.path.exists(path):
+            with open(path, 'r') as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return default
+
+def _write_json_file(path, data):
+    with open(path, 'w') as f:
+        json.dump(data, f, indent=2)
+
 # Role definitions based on UML Use Case Diagram
 ROLES = {
     'cybersecurity_professional': {
@@ -121,6 +138,40 @@ def init_default_users():
 
 # Initialize default users
 USERS = init_default_users()
+
+# Initialize rules and settings with sensible defaults
+DEFAULT_RULES = [
+    {
+        'id': 'rule-1',
+        'name': 'High crypto ops => Immediate',
+        'conditions': {
+            'BitcoinAddresses': { 'gt': 0 }
+        },
+        'when_prediction_is': 'ransomware',
+        'recommendation': 'IMMEDIATE_ACTION',
+        'enabled': True
+    },
+    {
+        'id': 'rule-2',
+        'name': 'High file modifications => Monitor',
+        'conditions': {
+            'ExportSize': { 'gt': 500 },
+            'ResourceSize': { 'gt': 500 }
+        },
+        'when_prediction_is': 'ransomware',
+        'recommendation': 'MONITOR',
+        'enabled': True
+    }
+]
+
+DEFAULT_SETTINGS = {
+    'min_confidence_for_immediate': 0.80,
+    'min_confidence_for_monitor': 0.60
+}
+
+RULES = _read_json_file(RULES_DB_FILE, DEFAULT_RULES)
+SETTINGS = _read_json_file(SETTINGS_DB_FILE, DEFAULT_SETTINGS)
+
 
 def require_role(*allowed_roles):
     """Decorator to require specific roles for routes"""
@@ -669,6 +720,49 @@ class RansomwareDetector:
             'feature_stats': df[self.feature_columns].describe().to_dict(),
         }
 
+    # Rule evaluation helper
+    def evaluate_rules(self, features: dict, prediction: int, confidence: float):
+        """Evaluate configured rules against features and model output.
+
+        Returns tuple: (matched_rules: list, recommendation: str or None)
+        """
+        matched = []
+        recommendation = None
+        pred_str = 'ransomware' if prediction == 1 else 'benign'
+        for rule in RULES:
+            if not rule.get('enabled', True):
+                continue
+            if rule.get('when_prediction_is', pred_str) not in [pred_str, 'any']:
+                continue
+            conds = rule.get('conditions', {}) or {}
+            ok = True
+            for feat, comp in conds.items():
+                val = float(features.get(feat, 0) or 0)
+                if 'gt' in comp and not (val > float(comp['gt'])):
+                    ok = False; break
+                if 'gte' in comp and not (val >= float(comp['gte'])):
+                    ok = False; break
+                if 'lt' in comp and not (val < float(comp['lt'])):
+                    ok = False; break
+                if 'lte' in comp and not (val <= float(comp['lte'])):
+                    ok = False; break
+                if 'eq' in comp and not (val == float(comp['eq'])):
+                    ok = False; break
+            if ok:
+                matched.append({'id': rule.get('id'), 'name': rule.get('name')})
+                # first strong recommendation wins
+                if recommendation is None:
+                    recommendation = rule.get('recommendation')
+        # Fallback to confidence thresholds if no rule matched
+        if recommendation is None and prediction == 1:
+            if confidence >= SETTINGS.get('min_confidence_for_immediate', 0.80):
+                recommendation = 'IMMEDIATE_ACTION'
+            elif confidence >= SETTINGS.get('min_confidence_for_monitor', 0.60):
+                recommendation = 'MONITOR'
+        if recommendation is None:
+            recommendation = 'NORMAL'
+        return matched, recommendation
+
 
 detector = RansomwareDetector()
 
@@ -882,7 +976,12 @@ def classify_realtime():
         
         # Classify
         result = detector.predict(features)
-        
+
+        # Evaluate rules for recommendation
+        matched_rules, recommendation = detector.evaluate_rules(
+            features, result['prediction'], result['confidence']
+        )
+
         # Return with behavioral indicators
         behavioral_indicators = detector._extract_behavioral_indicators(features)
         threat_classification = detector._classify_threat(features, result['prediction'], result['confidence'])
@@ -892,7 +991,8 @@ def classify_realtime():
             'result': result,
             'behavioral_indicators': behavioral_indicators,
             'threat_classification': threat_classification,
-            'recommendation': 'IMMEDIATE_ACTION' if result['prediction'] == 1 and result['confidence'] > 0.8 else 'MONITOR' if result['prediction'] == 1 else 'NORMAL'
+            'recommendation': recommendation,
+            'matched_rules': matched_rules
         })
     except Exception as e:
         return jsonify({'success': False, 'message': f'Classification failed: {str(e)}'})
@@ -925,6 +1025,84 @@ def get_system_logs():
         })
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
+
+# ------------------------ Detection Rules API ------------------------
+
+@app.route('/api/rules', methods=['GET'])
+@require_permission('configure_detection_rules')
+def list_rules():
+    try:
+        return jsonify({'success': True, 'rules': RULES})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/rules', methods=['POST'])
+@require_permission('configure_detection_rules')
+def upsert_rule():
+    try:
+        data = request.get_json() or {}
+        rid = (data.get('id') or f"rule-{int(time.time()*1000)}")
+        exists = False
+        for idx, r in enumerate(RULES):
+            if r.get('id') == rid:
+                RULES[idx] = {
+                    'id': rid,
+                    'name': data.get('name', r.get('name', 'Untitled Rule')),
+                    'conditions': data.get('conditions', r.get('conditions', {})),
+                    'when_prediction_is': data.get('when_prediction_is', r.get('when_prediction_is', 'any')),
+                    'recommendation': data.get('recommendation', r.get('recommendation', 'MONITOR')),
+                    'enabled': bool(data.get('enabled', r.get('enabled', True)))
+                }
+                exists = True
+                break
+        if not exists:
+            RULES.append({
+                'id': rid,
+                'name': data.get('name', 'Untitled Rule'),
+                'conditions': data.get('conditions', {}),
+                'when_prediction_is': data.get('when_prediction_is', 'any'),
+                'recommendation': data.get('recommendation', 'MONITOR'),
+                'enabled': bool(data.get('enabled', True))
+            })
+        _write_json_file(RULES_DB_FILE, RULES)
+        return jsonify({'success': True, 'rules': RULES, 'updated_id': rid})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/rules/<rule_id>', methods=['DELETE'])
+@require_permission('configure_detection_rules')
+def delete_rule(rule_id):
+    try:
+        global RULES
+        RULES = [r for r in RULES if r.get('id') != rule_id]
+        _write_json_file(RULES_DB_FILE, RULES)
+        return jsonify({'success': True, 'rules': RULES})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+# ------------------------ System Settings API ------------------------
+
+@app.route('/api/settings', methods=['GET'])
+@require_permission('manage_system_settings')
+def get_settings():
+    try:
+        return jsonify({'success': True, 'settings': SETTINGS})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/settings', methods=['POST'])
+@require_permission('manage_system_settings')
+def update_settings():
+    try:
+        data = request.get_json() or {}
+        SETTINGS.update({
+            'min_confidence_for_immediate': float(data.get('min_confidence_for_immediate', SETTINGS.get('min_confidence_for_immediate', 0.80))),
+            'min_confidence_for_monitor': float(data.get('min_confidence_for_monitor', SETTINGS.get('min_confidence_for_monitor', 0.60)))
+        })
+        _write_json_file(SETTINGS_DB_FILE, SETTINGS)
+        return jsonify({'success': True, 'settings': SETTINGS})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/upload-csv', methods=['POST'])
 def upload_csv():
@@ -1015,6 +1193,11 @@ if __name__ == '__main__':
     os.makedirs('templates', exist_ok=True)
     os.makedirs('static/css', exist_ok=True)
     os.makedirs('static/js', exist_ok=True)
+    # Ensure rules/settings files exist
+    if not os.path.exists(RULES_DB_FILE):
+        _write_json_file(RULES_DB_FILE, RULES)
+    if not os.path.exists(SETTINGS_DB_FILE):
+        _write_json_file(SETTINGS_DB_FILE, SETTINGS)
     
     print("Starting Ransomware Detection Web Application...")
     print("Dashboard available at: http://localhost:5000")

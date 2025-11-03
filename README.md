@@ -484,6 +484,11 @@ The system automatically maps behavioral indicators to PE features:
 | `/api/classify-realtime` | POST | Real-time classification | `monitor_system_behavior` |
 | `/api/detection-logs` | GET | Get detailed detection logs | `view_detection_reports` |
 | `/api/system-logs` | GET | Get system behavior logs | `monitor_system_performance` |
+| `/api/rules` | GET | List detection rules | `configure_detection_rules` |
+| `/api/rules` | POST | Create/Update rule (id optional) | `configure_detection_rules` |
+| `/api/rules/<id>` | DELETE | Delete rule | `configure_detection_rules` |
+| `/api/settings` | GET | Get system settings | `manage_system_settings` |
+| `/api/settings` | POST | Update system settings | `manage_system_settings` |
 
 ---
 
