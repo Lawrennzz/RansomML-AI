@@ -32,6 +32,18 @@ A comprehensive ransomware detection system that combines machine learning, web 
 - **Real-time Metrics**: Training performance metrics displayed immediately after training
 - **Responsive Design**: Mobile-friendly interface with smooth navigation
 
+### 📓 **Jupyter Notebook Support (NEW!)**
+- **Comprehensive Analysis Notebook**: `ransomware_detection_analysis.ipynb`
+  - Complete data loading and exploration
+  - Data preprocessing and cleaning
+  - Training multiple ML models (Random Forest, SVM, Neural Network)
+  - Model evaluation and comparison
+  - Feature importance analysis
+  - Advanced visualizations (confusion matrices, ROC curves, feature importance charts)
+  - Making predictions and testing
+  - Model saving and persistence
+- **Interactive Data Science Environment** for experimentation and research
+
 ### 🚀 **Production-Ready Features**
 - **RESTful API endpoints** with authentication
 - **Auto-trained ML models** with comprehensive performance metrics
@@ -63,6 +75,23 @@ The system includes 4 default test accounts for each role:
 
 **Note**: Each role has different permissions and access to different features!
 
+### **📓 For Jupyter Notebook Analysis:**
+```bash
+# Start Jupyter Notebook
+jupyter notebook
+
+# Or use JupyterLab
+jupyter lab
+
+# Then open: ransomware_detection_analysis.ipynb
+```
+
+The notebook provides a comprehensive analysis environment with:
+- Data exploration and visualization
+- Model training and evaluation
+- Feature importance analysis
+- Interactive visualizations
+- Model comparison and benchmarking
 
 ---
 
@@ -71,6 +100,9 @@ The system includes 4 default test accounts for each role:
 ### **🌐 Web Applications**
 - **`app.py`** - Main web application with role-based authentication
 - **`simple_test.py`** - Simple test script
+
+### **📓 Jupyter Notebooks**
+- **`ransomware_detection_analysis.ipynb`** - Comprehensive ML analysis notebook with data exploration, model training, evaluation, and visualizations
 
 ### **🌐 Web Templates**
 - **`templates/index.html`** - Main dashboard interface with separated views
@@ -105,9 +137,9 @@ The system includes 4 default test accounts for each role:
 - Windows registry changes
 
 ### **🌐 Multiple Interfaces**
-- **Web Dashboard** - User-friendly interface
-- **Jupyter Notebook** - Interactive data science environment
-- **API Endpoints** - Programmatic access
+- **Web Dashboard** - User-friendly interface with role-based access
+- **Jupyter Notebook** - Interactive data science environment with comprehensive ML analysis (`ransomware_detection_analysis.ipynb`)
+- **API Endpoints** - Programmatic access with authentication
 - **Tutorial System** - Step-by-step learning
 
 ### **📈 Real-Time Detection**
@@ -126,6 +158,7 @@ The system includes 4 default test accounts for each role:
 - **Feature Importance**: scikit-learn permutation_importance for universal support
 - **Visualization**: Chart.js, matplotlib, seaborn
 - **Frontend**: HTML5, CSS3, JavaScript, Bootstrap 5
+- **Notebook**: Jupyter, ipywidgets
 - **Model Persistence**: joblib
 - **Data Storage**: JSON (user database), CSV (datasets)
 
@@ -158,10 +191,15 @@ pip install -r requirements.txt
 pip install flask pandas numpy scikit-learn matplotlib seaborn jupyter ipywidgets joblib
 ```
 
-### **Enable Jupyter Extensions**
+### **Start Jupyter Notebook**
 ```bash
-# Enable ipywidgets for interactive features
-jupyter nbextension enable --py widgetsnbextension
+# Start Jupyter Notebook server
+jupyter notebook
+
+# Or use JupyterLab for enhanced features
+jupyter lab
+
+# Open ransomware_detection_analysis.ipynb for comprehensive ML analysis
 ```
 
 ---
@@ -177,6 +215,34 @@ python app.py
 # Access: http://localhost:5000
 # You will be redirected to login page
 ```
+
+### **📓 Jupyter Notebook Analysis**
+```bash
+# Start Jupyter Notebook
+jupyter notebook
+
+# Open ransomware_detection_analysis.ipynb
+# Run all cells to perform complete ML analysis
+```
+
+**Notebook Features:**
+- Load and explore dataset
+- Preprocess and clean data
+- Train multiple ML models (Random Forest, SVM, Neural Network)
+- Compare model performance
+- Visualize confusion matrices, ROC curves, and feature importance
+- Make predictions on test samples
+- Save trained models
+
+**Notebook Sections:**
+1. Data Loading & Exploration
+2. Data Preprocessing
+3. Model Training (3 different models)
+4. Model Comparison & Evaluation
+5. Feature Importance Analysis
+6. Visualizations
+7. Predictions & Testing
+8. Model Saving
 
 ### **API Usage with Authentication**
 ```python
@@ -379,10 +445,13 @@ The system automatically maps behavioral indicators to PE features:
 5. **Customize**: Add new features and roles
 
 ### **For Data Scientists**
-1. **Train Models**: Use the Train Model section to train different ML models
-2. **Analyze**: View feature importance and model performance metrics
-3. **Experiment**: Try different model types (RF, SVM, Neural Networks, CNN-LSTM)
-4. **Visualize**: View confusion matrices and feature importance charts
+1. **Open Notebook**: Launch `ransomware_detection_analysis.ipynb` in Jupyter
+2. **Explore Data**: Run data loading and exploration cells
+3. **Train Models**: Train Random Forest, SVM, and Neural Network models
+4. **Analyze Results**: Compare model performance and feature importance
+5. **Visualize**: View confusion matrices, ROC curves, and feature importance charts
+6. **Experiment**: Modify hyperparameters and try different configurations
+7. **Web Interface**: Use the web dashboard for real-time predictions and monitoring
 
 ---
 
@@ -427,6 +496,7 @@ The system automatically maps behavioral indicators to PE features:
 - ✅ **Training Time Tracking** - Real-time duration display
 - ✅ **Production Ready** - Secure authentication and scalable architecture
 - ✅ **Separated UI Views** - Clean interface with isolated feature sections
+- ✅ **Jupyter Notebook** - Comprehensive ML analysis notebook included
 - ✅ **Comprehensive Documentation** - Complete guides and test accounts
 
 ---
