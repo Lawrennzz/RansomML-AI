@@ -287,7 +287,10 @@
         <div class="card mb-3 section-anchor" id="logs">
             <div class="card-header">Detection Event Logs</div>
                                 <div class="card-body">
-                <button id="btn-view-logs" class="btn btn-secondary">View Detection Logs</button>
+                <div class="d-flex gap-2 mb-2">
+                    <button id="btn-view-logs" class="btn btn-secondary">View Detection Logs</button>
+                    <button id="btn-download-pdf" class="btn btn-outline-primary" data-permission="view_detection_reports">Download PDF</button>
+                </div>
                 <div id="logs-container" class="mt-3" style="display:none;">
                     <div class="table-responsive" style="max-height:400px; overflow-y:auto;">
                         <table id="logs-table" class="table table-sm table-striped"></table>
@@ -966,6 +969,30 @@
                 }
             } catch (e) {
                 table.innerHTML = `<tbody><tr><td>Error loading logs: ${e.message}</td></tr></tbody>`;
+            }
+        });
+
+        document.addEventListener('click', async (e) => {
+            if (e.target && e.target.id === 'btn-download-pdf') {
+                try {
+                    const resp = await fetch('/api/report/detection?limit=50');
+                    if (!resp.ok) {
+                        const t = await resp.text();
+                        alert('Download failed: ' + t);
+                        return;
+                    }
+                    const blob = await resp.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'detection_report.pdf';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                } catch (e2) {
+                    alert('Error: ' + e2.message);
+                }
             }
         });
 

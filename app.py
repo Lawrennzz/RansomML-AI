@@ -8,7 +8,7 @@ import os
 import json
 import pandas as pd
 import numpy as np
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
@@ -24,6 +24,13 @@ from sklearn.inspection import permutation_importance
 import warnings
 
 warnings.filterwarnings('ignore')
+try:
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.pdfgen import canvas
+    REPORTLAB_AVAILABLE = True
+except Exception:
+    REPORTLAB_AVAILABLE = False
 
 try:
     import kagglehub
@@ -1025,6 +1032,79 @@ def get_system_logs():
         })
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/report/detection', methods=['GET'])
+@require_permission('view_detection_reports')
+def download_detection_report_pdf():
+    try:
+        if not REPORTLAB_AVAILABLE:
+            return jsonify({'success': False, 'message': 'PDF generation not available. Install reportlab.'}), 501
+        limit = request.args.get('limit', 50, type=int)
+        logs = detector.get_detection_logs(limit)
+
+        # Build PDF into memory
+        buffer = io.BytesIO()
+        c = canvas.Canvas(buffer, pagesize=letter)
+        width, height = letter
+
+        # Header
+        c.setFont("Helvetica-Bold", 16)
+        c.drawString(40, height - 50, "Ransomware Detection Report")
+        c.setFont("Helvetica", 10)
+        c.drawString(40, height - 68, f"Generated: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+        # Summary
+        y = height - 90
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(40, y, "Summary")
+        y -= 16
+        benign = sum(1 for x in logs if x.get('prediction') == 'Benign')
+        ransom = sum(1 for x in logs if x.get('prediction') == 'Ransomware')
+        c.setFont("Helvetica", 10)
+        c.drawString(40, y, f"Total events: {len(logs)} | Benign: {benign} | Ransomware: {ransom}")
+        y -= 24
+
+        # Table header
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(40, y, "Time")
+        c.drawString(200, y, "Prediction")
+        c.drawString(290, y, "Risk")
+        c.drawString(360, y, "Confidence")
+        c.drawString(450, y, "Model")
+        y -= 12
+        c.line(40, y, width - 40, y)
+        y -= 10
+
+        c.setFont("Helvetica", 9)
+        for item in reversed(logs):
+            if y < 60:
+                c.showPage()
+                y = height - 50
+                c.setFont("Helvetica-Bold", 10)
+                c.drawString(40, y, "Time")
+                c.drawString(200, y, "Prediction")
+                c.drawString(290, y, "Risk")
+                c.drawString(360, y, "Confidence")
+                c.drawString(450, y, "Model")
+                y -= 12
+                c.line(40, y, width - 40, y)
+                y -= 10
+                c.setFont("Helvetica", 9)
+
+            c.drawString(40, y, str(item.get('timestamp', '') )[:19])
+            c.drawString(200, y, str(item.get('prediction', '')))
+            c.drawString(290, y, str(item.get('risk_level', '')))
+            c.drawString(360, y, f"{float(item.get('confidence', 0))*100:.1f}%")
+            c.drawString(450, y, str(item.get('model_type', '')))
+            y -= 14
+
+        c.showPage()
+        c.save()
+        buffer.seek(0)
+        return send_file(buffer, mimetype='application/pdf', as_attachment=True,
+                         download_name=f"detection_report_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.pdf")
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 # ------------------------ Detection Rules API ------------------------
 
