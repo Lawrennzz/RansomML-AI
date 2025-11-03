@@ -174,6 +174,16 @@ The notebook provides a comprehensive analysis environment with:
 
 ---
 
+## 🔒 Non-Functional Requirements
+
+- **High detection accuracy**: Maintain ≥95% accuracy and strong F1-score across supported models to ensure effective ransomware detection.
+- **Low false-positive/negative rates**: Minimize false alarms and missed detections to preserve reliability and user trust.
+- **Resource efficiency**: Optimized to run on moderately powered machines without excessive CPU or memory usage.
+- **Real-time responsiveness**: End-to-end detection feedback target ≤2 seconds to enable immediate threat mitigation.
+- **Scalability**: Flexible for enterprise or cloud deployments; supports larger datasets and higher throughput.
+- **Data security and privacy**: All behavioral logs and user data are processed securely and protected from unauthorized access.
+
+
 ## 🚀 **Installation & Setup**
 
 ### **Prerequisites**
