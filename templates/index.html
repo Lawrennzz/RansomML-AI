@@ -258,6 +258,9 @@
                             <div>Model Type: <span id="result-model-type"></span></div>
                             <div>Timestamp: <span id="result-timestamp"></span></div>
                                     </div>
+                        <div class="mt-3">
+                            <button id="btn-download-result-pdf" class="btn btn-outline-primary">Download Result PDF</button>
+                        </div>
                                 </div>
                             </div>
                 <div id="result-placeholder" class="text-center text-muted">
@@ -823,6 +826,7 @@
         });
 
         document.getElementById('btn-predict').addEventListener('click', async () => {
+            window.__lastResultBundle = null;
             const inputs = document.querySelectorAll('#feature-form input');
             const payload = {};
             inputs.forEach(inp => {
@@ -874,6 +878,15 @@
                         ransomEl.style.width = ransomPct + '%';
                         ransomEl.textContent = `Ransomware: ${ransomPct}%`;
                     }
+
+                    // Keep bundle for PDF report
+                    window.__lastResultBundle = {
+                        result: r,
+                        behavioral_indicators: data.behavioral_indicators || {},
+                        threat_classification: (data.threat_classification || ''),
+                        recommendation: (data.recommendation || ''),
+                        matched_rules: data.matched_rules || []
+                    };
                 } else {
                     if (alert) {
                         alert.className = 'alert alert-warning';
@@ -885,6 +898,35 @@
                     alert.className = 'alert alert-danger';
                     alert.innerHTML = `<h5>Error</h5><p>${e.message}</p>`;
                 }
+            }
+        });
+
+        // Download single prediction result PDF
+        document.addEventListener('click', async (e) => {
+            if (e.target && e.target.id === 'btn-download-result-pdf') {
+                const bundle = window.__lastResultBundle;
+                if (!bundle) { alert('No result available. Run a prediction first.'); return; }
+                try {
+                    const resp = await fetch('/api/report/prediction', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(bundle)
+                    });
+                    if (!resp.ok) {
+                        const t = await resp.text();
+                        alert('Download failed: ' + t);
+                        return;
+                    }
+                    const blob = await resp.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'prediction_report.pdf';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                } catch (e2) { alert('Error: ' + e2.message); }
             }
         });
 

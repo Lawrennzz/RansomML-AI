@@ -1106,6 +1106,100 @@ def download_detection_report_pdf():
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
+@app.route('/api/report/prediction', methods=['POST'])
+def download_single_prediction_pdf():
+    try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'Authentication required'}), 401
+        if not REPORTLAB_AVAILABLE:
+            return jsonify({'success': False, 'message': 'PDF generation not available. Install reportlab.'}), 501
+        payload = request.get_json() or {}
+        result = payload.get('result', {})
+        indicators = payload.get('behavioral_indicators', {})
+        threat = payload.get('threat_classification', '')
+        recommendation = payload.get('recommendation', 'NORMAL')
+        matched_rules = payload.get('matched_rules', [])
+
+        buffer = io.BytesIO()
+        c = canvas.Canvas(buffer, pagesize=letter)
+        width, height = letter
+
+        # Header / branding
+        c.setFont("Helvetica-Bold", 18)
+        c.drawString(40, height - 50, "Ransomware Prediction Report")
+        c.setFont("Helvetica", 10)
+        c.drawString(40, height - 68, f"Generated: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+        y = height - 100
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(40, y, "Summary")
+        y -= 18
+        c.setFont("Helvetica", 10)
+        pred_txt = 'RANSOMWARE' if int(result.get('prediction', 0)) == 1 else 'BENIGN'
+        conf_pct = float(result.get('confidence', 0))*100.0
+        c.drawString(40, y, f"Prediction: {pred_txt} | Confidence: {conf_pct:.2f}% | Risk: {result.get('risk_level','')}")
+        y -= 16
+        c.drawString(40, y, f"Model: {result.get('model_type','')} | Timestamp: {str(result.get('timestamp',''))[:19]}")
+        y -= 24
+
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(40, y, "Recommendation")
+        y -= 16
+        c.setFont("Helvetica", 10)
+        c.drawString(40, y, f"{recommendation}")
+        y -= 24
+
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(40, y, "Threat Classification")
+        y -= 16
+        c.setFont("Helvetica", 10)
+        c.drawString(40, y, f"{threat}")
+        y -= 24
+
+        # Probabilities
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(40, y, "Probabilities")
+        y -= 16
+        c.setFont("Helvetica", 10)
+        c.drawString(40, y, f"Benign: {float(result.get('benign_probability',0))*100:.1f}%  |  Ransomware: {float(result.get('ransomware_probability',0))*100:.1f}%")
+        y -= 24
+
+        # Behavioral indicators
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(40, y, "Behavioral Indicators")
+        y -= 16
+        c.setFont("Helvetica", 10)
+        for k in ['suspicious_activity_score','crypto_operations','file_modifications','system_calls']:
+            if y < 60:
+                c.showPage(); y = height - 50; c.setFont("Helvetica", 10)
+            v = indicators.get(k, '')
+            if k == 'suspicious_activity_score':
+                v = f"{float(v)*100:.1f}%"
+            c.drawString(40, y, f"- {k.replace('_',' ').title()}: {v}")
+            y -= 14
+
+        # Matched rules
+        if matched_rules:
+            if y < 80:
+                c.showPage(); y = height - 50
+            c.setFont("Helvetica-Bold", 12)
+            c.drawString(40, y, "Matched Rules")
+            y -= 16
+            c.setFont("Helvetica", 10)
+            for r in matched_rules:
+                if y < 60:
+                    c.showPage(); y = height - 50; c.setFont("Helvetica", 10)
+                c.drawString(40, y, f"- {r.get('name','')} ({r.get('id','')})")
+                y -= 14
+
+        c.showPage()
+        c.save()
+        buffer.seek(0)
+        return send_file(buffer, mimetype='application/pdf', as_attachment=True,
+                         download_name=f"prediction_report_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.pdf")
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 # ------------------------ Detection Rules API ------------------------
 
 @app.route('/api/rules', methods=['GET'])
