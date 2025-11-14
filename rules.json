@@ -2,7 +2,11 @@
   {
     "id": "rule-1",
     "name": "High crypto ops => Immediate",
-    "conditions": { "BitcoinAddresses": { "gt": 0 } },
+    "conditions": {
+      "BitcoinAddresses": {
+        "gt": 0
+      }
+    },
     "when_prediction_is": "ransomware",
     "recommendation": "IMMEDIATE_ACTION",
     "enabled": true
@@ -10,10 +14,24 @@
   {
     "id": "rule-2",
     "name": "High file modifications => Monitor",
-    "conditions": { "ExportSize": { "gt": 500 }, "ResourceSize": { "gt": 500 } },
+    "conditions": {
+      "ExportSize": {
+        "gt": 500
+      },
+      "ResourceSize": {
+        "gt": 500
+      }
+    },
     "when_prediction_is": "ransomware",
+    "recommendation": "MONITOR",
+    "enabled": true
+  },
+  {
+    "id": "rule-1763106932935",
+    "name": "Test New Rule",
+    "conditions": {},
+    "when_prediction_is": "any",
     "recommendation": "MONITOR",
     "enabled": true
   }
 ]
-
