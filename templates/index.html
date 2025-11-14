@@ -959,10 +959,20 @@
                 if (data.success) {
                     const r = data.result;
                     const isRansomware = r.prediction === 1;
-                    const alertClass = isRansomware ? 'alert-danger' : 'alert-success';
+                    const hasWarning = data.warning !== undefined;
+                    // Use warning alert if there's uncertainty, otherwise use danger/success
+                    const alertClass = hasWarning ? 'alert-warning' : (isRansomware ? 'alert-danger' : 'alert-success');
+                    const title = hasWarning ? '⚠️ UNCERTAIN - Model-Behavioral Mismatch' : 
+                                  (isRansomware ? '⚠️ RANSOMWARE DETECTED' : '✅ BENIGN BEHAVIOR');
+                    
+                    let warningHtml = '';
+                    if (hasWarning) {
+                        warningHtml = `<div class="alert alert-info mt-2"><strong>⚠️ Warning:</strong> ${data.warning}</div>`;
+                    }
+                    
                     resultDiv.innerHTML = `
                         <div class="alert ${alertClass}">
-                            <h6>${isRansomware ? '⚠️ RANSOMWARE DETECTED' : '✅ BENIGN BEHAVIOR'}</h6>
+                            <h6>${title}</h6>
                             <hr>
                             <div><strong>Threat Classification:</strong> ${data.threat_classification}</div>
                             <div><strong>Recommendation:</strong> ${data.recommendation}</div>
@@ -975,7 +985,8 @@
                                 <li>Crypto Operations: ${data.behavioral_indicators.crypto_operations}</li>
                                 <li>File Modifications: ${data.behavioral_indicators.file_modifications}</li>
                             </ul>
-    </div>
+                        </div>
+                        ${warningHtml}
                     `;
                 } else {
                     resultDiv.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;

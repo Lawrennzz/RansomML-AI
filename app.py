@@ -1059,14 +1059,38 @@ def classify_realtime():
         # Preprocess behavioral data to extract features
         preprocessed = detector._preprocess_behavioral_data(behavioral_data)
         
+        # Map behavioral data keys to PE feature names
+        feature_mapping = {
+            'file_access_count': 'ExportSize',
+            'file_modifications': 'ResourceSize',
+            'system_calls': 'NumberOfSections',
+            'directory_access': 'DebugRVA',
+            'crypto_operations': 'BitcoinAddresses',
+            'process_count': 'Machine',
+            'registry_changes': 'IatVRA',
+            'memory_usage': 'SizeOfStackReserve',
+            'dll_characteristics': 'DllCharacteristics',
+            'debug_info': 'DebugSize'
+        }
+        
+        # Create reverse mapping (PE feature -> behavioral key)
+        reverse_mapping = {v: k for k, v in feature_mapping.items()}
+        
         # Map to expected feature format
         features = {}
         for col in detector.feature_columns:
-            # Try direct mapping first
+            # Try direct mapping first (if behavioral data uses PE feature names)
             if col in preprocessed:
                 features[col] = preprocessed[col]
+            # Try reverse mapping (behavioral key -> PE feature)
+            elif col in reverse_mapping:
+                behavioral_key = reverse_mapping[col]
+                if behavioral_key in preprocessed:
+                    features[col] = preprocessed[behavioral_key]
+                else:
+                    features[col] = 0.0
             else:
-                # Use default mapping or 0
+                # Use default value of 0
                 features[col] = 0.0
         
         # Classify
@@ -1075,16 +1099,42 @@ def classify_realtime():
         elapsed_ms = (time.time() - t0) * 1000.0
         detector.record_latency(elapsed_ms)
 
+        # Return with behavioral indicators
+        behavioral_indicators = detector._extract_behavioral_indicators(features)
+        
+        # Behavioral sanity check: If behavioral indicators suggest benign but model predicts ransomware,
+        # we should be more cautious and potentially override the recommendation
+        suspicious_score = behavioral_indicators.get('suspicious_activity_score', 0.0)
+        crypto_ops = behavioral_indicators.get('crypto_operations', 0)
+        file_mods = behavioral_indicators.get('file_modifications', 0)
+        
+        # Check if behavioral data contradicts model prediction
+        behavioral_suggests_benign = (
+            suspicious_score < 0.2 and  # Low suspicious activity
+            crypto_ops == 0 and  # No crypto operations
+            file_mods < 100  # Low file modifications
+        )
+        
         # Evaluate rules for recommendation
         matched_rules, recommendation = detector.evaluate_rules(
             features, result['prediction'], result['confidence']
         )
-
-        # Return with behavioral indicators
-        behavioral_indicators = detector._extract_behavioral_indicators(features)
-        threat_classification = detector._classify_threat(features, result['prediction'], result['confidence'])
         
-        return jsonify({
+        # Override recommendation if behavioral indicators contradict high-confidence ransomware prediction
+        warning_message = None
+        if (result['prediction'] == 1 and 
+            result['confidence'] > 0.7 and 
+            behavioral_suggests_benign and 
+            recommendation == 'IMMEDIATE_ACTION'):
+            # Downgrade to MONITOR if behavioral data suggests benign
+            recommendation = 'MONITOR'
+            # Also adjust threat classification
+            threat_classification = 'Uncertain - Behavioral indicators suggest benign, but model flags as suspicious'
+            warning_message = 'Warning: Model predicts ransomware, but behavioral indicators (low suspicious activity, no crypto operations, low file modifications) suggest benign behavior. This may indicate a false positive or model-data mismatch.'
+        else:
+            threat_classification = detector._classify_threat(features, result['prediction'], result['confidence'])
+        
+        response_data = {
             'success': True,
             'result': result,
             'behavioral_indicators': behavioral_indicators,
@@ -1093,7 +1143,12 @@ def classify_realtime():
             'matched_rules': matched_rules,
             'processing_time_ms': round(elapsed_ms, 2),
             'sla_met': elapsed_ms <= 2000.0
-        })
+        }
+        
+        if warning_message:
+            response_data['warning'] = warning_message
+        
+        return jsonify(response_data)
     except Exception as e:
         return jsonify({'success': False, 'message': f'Classification failed: {str(e)}'})
 
