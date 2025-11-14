@@ -308,6 +308,15 @@ class RansomwareDetector:
                 "Either place data_file.csv in the project directory or install: pip install kagglehub[pandas-datasets]"
             )
 
+        return self._process_dataset(df)
+
+    def load_dataset_from_dataframe(self, df: pd.DataFrame):
+        """Load dataset from a pandas DataFrame (e.g., from uploaded CSV)"""
+        print(f"Loading dataset from DataFrame: {len(df)} rows, {len(df.columns)} columns")
+        return self._process_dataset(df)
+
+    def _process_dataset(self, df: pd.DataFrame):
+        """Process and prepare dataset for training"""
         print(f"Dataset loaded: {len(df)} rows, {len(df.columns)} columns")
 
         # Basic cleaning: drop identifiers, keep numeric columns
@@ -1370,8 +1379,9 @@ def update_settings():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/upload-csv', methods=['POST'])
+@require_permission('train_ml_model')
 def upload_csv():
-    """Upload and analyze CSV dataset"""
+    """Upload and analyze CSV dataset, then load it for training"""
     try:
         if 'file' not in request.files:
             return jsonify({'success': False, 'message': 'No file provided'})
@@ -1384,33 +1394,39 @@ def upload_csv():
         stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
         df_uploaded = pd.read_csv(stream)
         
-        # Check for required features
-        if not detector.feature_columns:
-            # Load default dataset to get feature names
-            detector.load_kaggle_dataset()
+        # Validate dataset has required columns
+        if 'Benign' not in df_uploaded.columns:
+            return jsonify({'success': False, 'message': 'Dataset must contain "Benign" column (1=benign, 0=malicious)'})
         
-        # Find matching columns
-        available_features = [f for f in detector.feature_columns if f in df_uploaded.columns]
-        missing_features = [f for f in detector.feature_columns if f not in df_uploaded.columns]
+        # Load the uploaded dataset into the detector
+        try:
+            detector.load_dataset_from_dataframe(df_uploaded)
+        except Exception as e:
+            return jsonify({'success': False, 'message': f'Failed to process dataset: {str(e)}'})
+        
+        # Get feature information after processing
+        available_features = detector.feature_columns
         
         # Prepare preview data (first 10 rows, only available features)
-        preview_data = df_uploaded[available_features].head(10).to_dict(orient='records')
+        preview_data = df_uploaded[available_features + ['Benign']].head(10).to_dict(orient='records')
         
         # Statistics
         stats = {
             'total_rows': int(len(df_uploaded)),
+            'processed_rows': int(len(detector.training_data)),
             'available_features': len(available_features),
-            'missing_features': len(missing_features),
             'available_feature_names': available_features,
-            'missing_feature_names': missing_features,
+            'benign_count': int(df_uploaded['Benign'].sum()),
+            'ransomware_count': int((df_uploaded['Benign'] == 0).sum()),
         }
         
         return jsonify({
             'success': True,
-            'message': f'CSV uploaded: {len(df_uploaded)} rows, {len(available_features)}/{len(detector.feature_columns)} features found',
+            'message': f'CSV uploaded and loaded successfully: {stats["processed_rows"]} rows processed, {len(available_features)} features. Ready for training!',
             'preview': preview_data,
             'stats': stats,
-            'columns': list(df_uploaded.columns)
+            'columns': list(df_uploaded.columns),
+            'ready_for_training': True
         })
     except Exception as e:
         return jsonify({'success': False, 'message': f'Upload failed: {str(e)}'})
