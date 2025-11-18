@@ -288,6 +288,7 @@ class RansomwareDetector:
             'last_latency_ms': 0.0,
             'max_latency_ms': 0.0
         }
+        self.upload_history = []  # Store CSV upload history for system users
 
     def load_kaggle_dataset(self, file_path: str = "data_file.csv"):
         """Load dataset from local CSV file first, fallback to kagglehub if needed"""
@@ -807,6 +808,66 @@ class RansomwareDetector:
             'features': int(len(self.feature_columns)),
             'feature_stats': df[self.feature_columns].describe().to_dict(),
         }
+    
+    def predict_batch_from_csv(self, df: pd.DataFrame):
+        """Predict ransomware for all rows in a CSV DataFrame"""
+        if self.model is None or self.scaler is None:
+            raise ValueError("Model not trained yet")
+        
+        # Ensure model is loaded
+        if not self.dataset_loaded:
+            self.load_kaggle_dataset()
+        
+        # Prepare features from CSV
+        results = []
+        for idx, row in df.iterrows():
+            features = {}
+            for col in self.feature_columns:
+                if col in row:
+                    features[col] = _safe_float(row[col], 0.0)
+                else:
+                    features[col] = 0.0
+            
+            try:
+                result = self.predict(features)
+                results.append({
+                    'row_index': int(idx),
+                    'prediction': result['prediction'],
+                    'confidence': result['confidence'],
+                    'is_ransomware': result['prediction'] == 1,
+                    'risk_level': result['risk_level']
+                })
+            except Exception as e:
+                results.append({
+                    'row_index': int(idx),
+                    'prediction': -1,
+                    'confidence': 0.0,
+                    'is_ransomware': False,
+                    'error': str(e)
+                })
+        
+        return results
+    
+    def add_upload_history(self, filename: str, total_rows: int, ransomware_count: int, benign_count: int):
+        """Add entry to upload history"""
+        import datetime
+        entry = {
+            'timestamp': datetime.datetime.now().isoformat(),
+            'filename': filename,
+            'total_rows': total_rows,
+            'ransomware_detected': ransomware_count,
+            'benign_count': benign_count,
+            'has_ransomware': ransomware_count > 0
+        }
+        self.upload_history.append(entry)
+        # Keep only last 100 entries
+        if len(self.upload_history) > 100:
+            self.upload_history = self.upload_history[-100:]
+        return entry
+    
+    def get_upload_history(self, limit: int = 50):
+        """Get upload history"""
+        return self.upload_history[-limit:] if limit else self.upload_history
 
     # Rule evaluation helper
     def evaluate_rules(self, features: dict, prediction: int, confidence: float):
@@ -860,7 +921,13 @@ def index():
     """Main dashboard page"""
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    return render_template('index.html', user=USERS.get(session.get('user_id')), roles=ROLES)
+    
+    user = USERS.get(session.get('user_id'))
+    # System users get simplified interface
+    if user and user.get('role') == 'system_user':
+        return render_template('simple_interface.html', user=user, roles=ROLES)
+    
+    return render_template('index.html', user=user, roles=ROLES)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -1485,6 +1552,102 @@ def upload_csv():
         })
     except Exception as e:
         return jsonify({'success': False, 'message': f'Upload failed: {str(e)}'})
+
+@app.route('/api/user/upload-and-predict', methods=['POST'])
+def user_upload_and_predict():
+    """System User: Upload CSV and get ransomware detection results"""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Authentication required'}), 401
+    
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'message': 'No file provided'})
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'message': 'No file selected'})
+        
+        # Check if model is trained
+        if detector.model is None or detector.scaler is None:
+            # Auto-train if not trained
+            try:
+                detector.train_models()
+            except Exception as e:
+                return jsonify({'success': False, 'message': f'Model not trained and auto-training failed: {str(e)}'})
+        
+        # Start timing
+        start_time = time.time()
+        
+        # Read CSV
+        stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
+        df_uploaded = pd.read_csv(stream)
+        
+        # Drop identifier columns if present
+        drop_cols = [c for c in ['FileName', 'md5Hash'] if c in df_uploaded.columns]
+        df_uploaded = df_uploaded.drop(columns=drop_cols, errors='ignore')
+        
+        # Predict for all rows
+        prediction_results = detector.predict_batch_from_csv(df_uploaded)
+        
+        # Calculate processing time
+        processing_time = time.time() - start_time
+        processing_time_ms = processing_time * 1000
+        
+        # Count results
+        ransomware_count = sum(1 for r in prediction_results if r.get('is_ransomware', False))
+        benign_count = len(prediction_results) - ransomware_count
+        has_ransomware = ransomware_count > 0
+        
+        # Add to upload history
+        history_entry = detector.add_upload_history(
+            filename=file.filename,
+            total_rows=len(df_uploaded),
+            ransomware_count=ransomware_count,
+            benign_count=benign_count
+        )
+        
+        # Prepare summary
+        summary = {
+            'filename': file.filename,
+            'total_files': len(df_uploaded),
+            'ransomware_detected': ransomware_count,
+            'benign_files': benign_count,
+            'has_ransomware': has_ransomware,
+            'timestamp': history_entry['timestamp'],
+            'processing_time_seconds': round(processing_time, 2),
+            'processing_time_ms': round(processing_time_ms, 2)
+        }
+        
+        return jsonify({
+            'success': True,
+            'summary': summary,
+            'message': f'⚠️ RANSOMWARE DETECTED in {ransomware_count} file(s)' if has_ransomware else f'✅ All {benign_count} file(s) are BENIGN',
+            'results': prediction_results[:10],  # Return first 10 for preview
+            'processing_time': {
+                'seconds': round(processing_time, 2),
+                'milliseconds': round(processing_time_ms, 2),
+                'formatted': f"{round(processing_time, 2)}s" if processing_time < 1 else f"{int(processing_time)}s {int((processing_time % 1) * 1000)}ms"
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Upload and prediction failed: {str(e)}'})
+
+@app.route('/api/user/upload-history')
+def user_upload_history():
+    """Get upload history for system user"""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Authentication required'}), 401
+    
+    try:
+        limit = request.args.get('limit', 50, type=int)
+        history = detector.get_upload_history(limit)
+        return jsonify({
+            'success': True,
+            'history': history,
+            'total_entries': len(history)
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/feature-importance')
 def feature_importance():
