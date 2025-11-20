@@ -5,13 +5,14 @@ A test sample dataset (`test_data_file.csv`) has been created from the original 
 
 ## Test Dataset Details
 
-- **File Name**: `test_data_file.csv`
-- **Total Rows**: 200 samples
-- **Class Distribution**: 
-  - Benign (1): 100 samples
-  - Ransomware (0): 100 samples
-- **Features**: 15 feature columns (same as original dataset)
-- **Format**: Matches the original `data_file.csv` structure exactly
+| File | Rows | Purpose | Notes |
+|------|------|---------|-------|
+| `test_data_file.csv` | 200 | Primary balanced dataset used for training demos | Includes the `Benign` label column |
+| `user_test_file.csv` | 10 | Ultra-light test file for System User uploads | Balanced 5 benign / 5 ransomware |
+| `user_dataset_with_labels.csv` | 20 | Example of a **labeled** dataset for retraining | Keeps the `Benign` column |
+| `user_dataset_without_labels.csv` | 20 | Example of an **unlabeled** dataset for end-user prediction | `Benign` column removed |
+
+All four CSVs share the same feature columns as the original Kaggle dataset. The `FileName` values were sanitized to neutral identifiers such as `Sample_0007_RANSOM` so nothing in the UI exposes vendor-specific names like “VirusShare”.
 
 ## How to Use
 
@@ -26,7 +27,7 @@ python app.py
   - **IT Administrator**: `admin@example.com` / `admin123`
   - **Academic Researcher**: `researcher@example.com` / `research123`
 
-### Step 3: Upload Test Dataset
+### Step 3: Upload Test Dataset (Training Flow)
 1. Navigate to **"Upload CSV"** section in the navbar
 2. Click **"Choose File"** and select `test_data_file.csv`
 3. Click **"Upload & Analyze"** button
@@ -37,6 +38,22 @@ python app.py
    - Show message: "Ready for training!"
 
 ### Step 4: Train Model
+## System User Testing (Prediction-Only Flow)
+
+If you simply want to demonstrate the System User interface (upload → detect ransomware, no training required), use the smaller CSVs:
+
+1. Log in as the **System User** account (`user@example.com` / `user123`).
+2. In the simplified interface, upload either:
+   - `user_test_file.csv` (quick 10-row file), or
+   - `user_dataset_without_labels.csv` (20 rows).
+3. The system:
+   - Automatically runs batch prediction on all rows.
+   - Displays total counts, analysis time, and the exact sample names that were flagged.
+   - Stores the upload in the history table so users can trace previous runs.
+
+You can also upload `user_dataset_with_labels.csv`; the backend ignores extra columns during prediction, so both labeled and unlabeled files work for System Users. The only difference is that labeled files are suitable for retraining if you switch to an admin role later.
+
+## Dataset Structure
 1. Navigate to **"Train Model"** section
 2. Select a model type:
    - **Random Forest** (~30-60s) - Recommended for quick testing
@@ -128,7 +145,11 @@ After uploading and training, you can verify:
 
 ## Files Created
 
-- `test_data_file.csv` - Test dataset (200 samples)
-- `create_test_dataset.py` - Script to generate test datasets
+- `test_data_file.csv` - Main balanced dataset (200 samples)
+- `user_test_file.csv` - Mini dataset for demos (10 samples)
+- `user_dataset_with_labels.csv` - Sample labeled dataset (20 samples)
+- `user_dataset_without_labels.csv` - Sample unlabeled dataset (20 samples)
+- `create_test_dataset.py` - Script to generate large balanced dataset
+- `create_user_test_csv.py` - Script to regenerate the mini dataset
 - `TEST_DATASET_README.md` - This documentation
 
