@@ -848,7 +848,7 @@ class RansomwareDetector:
         
         return results
     
-    def add_upload_history(self, filename: str, total_rows: int, ransomware_count: int, benign_count: int):
+    def add_upload_history(self, filename: str, total_rows: int, ransomware_count: int, benign_count: int, ransomware_files=None):
         """Add entry to upload history"""
         import datetime
         entry = {
@@ -857,7 +857,8 @@ class RansomwareDetector:
             'total_rows': total_rows,
             'ransomware_detected': ransomware_count,
             'benign_count': benign_count,
-            'has_ransomware': ransomware_count > 0
+            'has_ransomware': ransomware_count > 0,
+            'ransomware_files': ransomware_files or []
         }
         self.upload_history.append(entry)
         # Keep only last 100 entries
@@ -1580,36 +1581,55 @@ def user_upload_and_predict():
         
         # Read CSV
         stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
-        df_uploaded = pd.read_csv(stream)
+        original_df = pd.read_csv(stream)
         
-        # Drop identifier columns if present
-        drop_cols = [c for c in ['FileName', 'md5Hash'] if c in df_uploaded.columns]
-        df_uploaded = df_uploaded.drop(columns=drop_cols, errors='ignore')
+        # Drop identifier columns if present for prediction
+        df_for_prediction = original_df.drop(columns=[c for c in ['FileName', 'md5Hash'] if c in original_df.columns], errors='ignore')
         
         # Predict for all rows
-        prediction_results = detector.predict_batch_from_csv(df_uploaded)
+        prediction_results = detector.predict_batch_from_csv(df_for_prediction)
         
         # Calculate processing time
         processing_time = time.time() - start_time
         processing_time_ms = processing_time * 1000
         
-        # Count results
-        ransomware_count = sum(1 for r in prediction_results if r.get('is_ransomware', False))
+        # Count results and collect ransomware file info
+        ransomware_files = []
+        ransomware_count = 0
+        for result in prediction_results:
+            if result.get('is_ransomware', False):
+                ransomware_count += 1
+                idx = result.get('row_index', 0)
+                label = None
+                if 'FileName' in original_df.columns:
+                    try:
+                        label = str(original_df.iloc[idx]['FileName'])
+                    except Exception:
+                        label = None
+                if not label:
+                    label = f"Row {idx + 1}"
+                ransomware_files.append({
+                    'row_index': idx,
+                    'label': label,
+                    'confidence': round(result.get('confidence', 0.0) * 100, 2),
+                    'risk_level': result.get('risk_level')
+                })
         benign_count = len(prediction_results) - ransomware_count
         has_ransomware = ransomware_count > 0
         
         # Add to upload history
         history_entry = detector.add_upload_history(
             filename=file.filename,
-            total_rows=len(df_uploaded),
+            total_rows=len(df_for_prediction),
             ransomware_count=ransomware_count,
-            benign_count=benign_count
+            benign_count=benign_count,
+            ransomware_files=ransomware_files[:5]
         )
         
         # Prepare summary
         summary = {
             'filename': file.filename,
-            'total_files': len(df_uploaded),
+            'total_files': len(df_for_prediction),
             'ransomware_detected': ransomware_count,
             'benign_files': benign_count,
             'has_ransomware': has_ransomware,
@@ -1623,6 +1643,7 @@ def user_upload_and_predict():
             'summary': summary,
             'message': f'⚠️ RANSOMWARE DETECTED in {ransomware_count} file(s)' if has_ransomware else f'✅ All {benign_count} file(s) are BENIGN',
             'results': prediction_results[:10],  # Return first 10 for preview
+            'ransomware_files': ransomware_files,
             'processing_time': {
                 'seconds': round(processing_time, 2),
                 'milliseconds': round(processing_time_ms, 2),

@@ -194,6 +194,45 @@
                     const processingTime = data.processing_time || {};
                     const timeDisplay = processingTime.formatted || `${processingTime.seconds || 0}s`;
                     
+                    let ransomwareListHtml = '';
+                    if (Array.isArray(data.ransomware_files) && data.ransomware_files.length > 0) {
+                        ransomwareListHtml = `
+                            <div class="mt-4">
+                                <h6>⚠️ Ransomware Files Detected (${data.ransomware_files.length})</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>File</th>
+                                                <th>Confidence</th>
+                                                <th>Risk Level</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${data.ransomware_files.map((file, idx) => `
+                                                <tr>
+                                                    <td>${idx + 1}</td>
+                                                    <td>${file.label}</td>
+                                                    <td>${file.confidence?.toFixed ? file.confidence.toFixed(2) : file.confidence}%</td>
+                                                    <td>${file.risk_level || '-'}</td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        `;
+                    } else if (summary.has_ransomware === false) {
+                        ransomwareListHtml = `
+                            <div class="mt-4">
+                                <div class="alert alert-success mb-0">
+                                    ✅ No individual files flagged as ransomware in this upload.
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
                     resultDetails.innerHTML = `
                         <div class="row g-3">
                             <div class="col-md-3">
@@ -226,6 +265,7 @@
                             <strong>Uploaded:</strong> ${new Date(summary.timestamp).toLocaleString()}<br>
                             <strong>Processing Time:</strong> ${timeDisplay} (${processingTime.milliseconds || 0}ms)
                         </div>
+                        ${ransomwareListHtml}
                     `;
 
                     detectionResult.style.display = 'block';
@@ -253,13 +293,16 @@
                 if (data.success && data.history && data.history.length > 0) {
                     const history = data.history.reverse(); // Show newest first
                     let html = '<div class="table-responsive"><table class="table table-sm table-striped"><thead><tr>';
-                    html += '<th>Date & Time</th><th>Filename</th><th>Total Files</th><th>Ransomware</th><th>Benign</th><th>Status</th></tr></thead><tbody>';
+                    html += '<th>Date & Time</th><th>Filename</th><th>Total Files</th><th>Ransomware</th><th>Benign</th><th>Status</th><th>Detected Files</th></tr></thead><tbody>';
                     
                     history.forEach(entry => {
                         const date = new Date(entry.timestamp);
                         const statusBadge = entry.has_ransomware 
                             ? '<span class="badge bg-danger">⚠️ Ransomware</span>'
                             : '<span class="badge bg-success">✅ Safe</span>';
+                        const detectedFiles = (entry.ransomware_files && entry.ransomware_files.length)
+                            ? entry.ransomware_files.map(f => f.label || `Row ${ (f.row_index ?? 0) + 1 }`).slice(0, 3).join(', ') + (entry.ransomware_files.length > 3 ? ' +' + (entry.ransomware_files.length - 3) + ' more' : '')
+                            : '-';
                         
                         html += `<tr>
                             <td>${date.toLocaleString()}</td>
@@ -268,6 +311,7 @@
                             <td class="text-danger">${entry.ransomware_detected}</td>
                             <td class="text-success">${entry.benign_count}</td>
                             <td>${statusBadge}</td>
+                            <td>${detectedFiles}</td>
                         </tr>`;
                     });
                     
