@@ -9,6 +9,7 @@ A test sample dataset (`test_data_file.csv`) has been created from the original 
 |------|------|---------|-------|
 | `test_data_file.csv` | 200 | Primary balanced dataset used for training demos | Includes the `Benign` label column |
 | `user_test_file.csv` | 10 | Ultra-light test file for System User uploads | Balanced 5 benign / 5 ransomware, `Benign` column removed |
+| `user_test_file_large.csv` | 50 | Larger System User demo dataset | Balanced 25 benign / 25 ransomware, unlabeled |
 
 All four CSVs share the same feature columns as the original Kaggle dataset. The `FileName` values were sanitized to neutral identifiers such as `Sample_0007_RANSOM` so nothing in the UI exposes vendor-specific names like “VirusShare”.
 
@@ -38,18 +39,18 @@ python app.py
 ### Step 4: Train Model
 ## System User Testing (Prediction-Only Flow)
 
-If you simply want to demonstrate the System User interface (upload → detect ransomware, no training required), use the smaller CSVs:
+If you simply want to demonstrate the System User interface (upload → detect ransomware, no training required), use one of the unlabeled CSVs:
 
 1. Log in as the **System User** account (`user@example.com` / `user123`).
 2. In the simplified interface, upload either:
    - `user_test_file.csv` (quick 10-row file), or
-   - `user_dataset_without_labels.csv` (20 rows).
+   - `user_test_file_large.csv` (larger 50-row file to showcase longer processing and more detections).
 3. The system:
    - Automatically runs batch prediction on all rows.
    - Displays total counts, analysis time, and the exact sample names that were flagged.
    - Stores the upload in the history table so users can trace previous runs.
 
-Because `user_test_file.csv` is unlabeled, it mirrors the exact experience a production System User has—no exposure to the `Benign` column or any hint about which rows are malicious. Admin roles should continue using `test_data_file.csv` (or another labeled dataset) when training or retraining.
+Because both System User CSVs are unlabeled, they mirror the exact experience a production System User has—no exposure to the `Benign` column or any hint about which rows are malicious. Admin roles should continue using `test_data_file.csv` (or another labeled dataset) when training or retraining.
 
 ## Dataset Structure
 1. Navigate to **"Train Model"** section
@@ -145,7 +146,8 @@ After uploading and training, you can verify:
 
 - `test_data_file.csv` - Main balanced dataset (200 samples, labeled)
 - `user_test_file.csv` - Mini dataset for demos (10 samples, unlabeled)
+- `user_test_file_large.csv` - Larger demo dataset (50 samples, unlabeled)
 - `create_test_dataset.py` - Script to generate large balanced dataset
-- `create_user_test_csv.py` - Script to regenerate the unlabeled mini dataset
+- `create_user_test_csv.py` - Script to regenerate the unlabeled demo datasets
 - `TEST_DATASET_README.md` - This documentation
 

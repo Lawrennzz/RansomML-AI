@@ -115,13 +115,15 @@ The notebook provides a comprehensive analysis environment with:
 - **`detection_logs.csv`** - Detection history
 - **`test_data_file.csv`** - Balanced admin dataset with labels (200 rows)
 - **`user_test_file.csv`** - Lightweight System User dataset without labels (10 rows)
+- **`user_test_file_large.csv`** - Larger System User dataset without labels (50 rows)
 
 ### **🧪 Sample Datasets for Testing**
 
 | File | Rows | Role | Description |
 |------|------|------|-------------|
 | `test_data_file.csv` | 200 | Cybersecurity Pro / Researcher | Balanced dataset with the `Benign` label. Use this (or any labeled CSV) when training or retraining models. |
-| `user_test_file.csv` | 10 | System User | Unlabeled dataset with sanitized `Sample_0001` filenames. Ideal for demonstrating the upload → detect workflow without exposing labels. |
+| `user_test_file.csv` | 10 | System User | Unlabeled dataset with sanitized `SampleShort_0001` filenames. Ideal for a quick upload → detect demo. |
+| `user_test_file_large.csv` | 50 | System User | Larger unlabeled dataset (25 benign / 25 ransomware). Demonstrates uploads that take longer and produce bigger detection tables. |
 
 System Users only need feature columns; the backend drops the `Benign` column if it happens to be present. Admin roles must supply labeled data when training, so keep `Benign` for any dataset you plan to feed into `/api/train`.
 

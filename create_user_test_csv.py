@@ -16,28 +16,52 @@ df_original = pd.read_csv(data_file_path)
 
 print(f"Original dataset: {len(df_original)} rows")
 
-# Create a small test sample with mix of benign and ransomware
-# Sample 5 benign and 5 ransomware samples
-benign_samples = df_original[df_original['Benign'] == 1].sample(n=5, random_state=42)
-ransomware_samples = df_original[df_original['Benign'] == 0].sample(n=5, random_state=42)
+df_benign = df_original[df_original['Benign'] == 1]
+df_ransom = df_original[df_original['Benign'] == 0]
 
-# Combine and shuffle
-test_df = pd.concat([benign_samples, ransomware_samples], ignore_index=True)
-test_df = test_df.sample(frac=1, random_state=42).reset_index(drop=True)
+configs = [
+    {
+        'filename': 'user_test_file.csv',
+        'benign_n': 5,
+        'ransom_n': 5,
+        'prefix': 'SampleShort',
+        'shuffle_seed': 42,
+        'sample_seed': 42
+    },
+    {
+        'filename': 'user_test_file_large.csv',
+        'benign_n': 25,
+        'ransom_n': 25,
+        'prefix': 'SampleLarge',
+        'shuffle_seed': 99,
+        'sample_seed': 84
+    }
+]
 
-print(f"\nTest dataset created: {len(test_df)} rows")
-print(f"Benign: {(test_df['Benign']==1).sum()}, Ransomware: {(test_df['Benign']==0).sum()}")
+for cfg in configs:
+    benign_samples = df_benign.sample(
+        n=cfg['benign_n'],
+        random_state=cfg['sample_seed']
+    )
+    ransomware_samples = df_ransom.sample(
+        n=cfg['ransom_n'],
+        random_state=cfg['sample_seed']
+    )
 
-# Sanitize filenames and drop Benign column for end-user testing
-test_df = test_df.copy()
-test_df['FileName'] = [f"Sample_{i+1:04d}" for i in range(len(test_df))]
+    combined = pd.concat([benign_samples, ransomware_samples], ignore_index=True)
+    combined = combined.sample(frac=1, random_state=cfg['shuffle_seed']).reset_index(drop=True)
 
-output_df = test_df.drop(columns=['Benign'])
+    benign_count = int((combined['Benign'] == 1).sum())
+    ransomware_count = int((combined['Benign'] == 0).sum())
 
-# Save to new CSV file
-output_file = os.path.join(script_dir, 'user_test_file.csv')
-output_df.to_csv(output_file, index=False)
+    sanitized = combined.copy()
+    sanitized['FileName'] = [f"{cfg['prefix']}_{i+1:04d}" for i in range(len(sanitized))]
 
-print(f"\n[SUCCESS] User test file created: {output_file}")
-print(f"File contains {len(output_df)} unlabeled samples for System User testing!")
+    output_df = sanitized.drop(columns=['Benign'])
+    output_path = os.path.join(script_dir, cfg['filename'])
+    output_df.to_csv(output_path, index=False)
+
+    print(f"\n[SUCCESS] Created {cfg['filename']}")
+    print(f" - Rows: {len(output_df)} (Benign source rows: {benign_count}, Ransomware source rows: {ransomware_count})")
+    print(f" - Saved to: {output_path}")
 
