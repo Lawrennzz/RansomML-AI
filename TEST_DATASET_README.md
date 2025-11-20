@@ -8,9 +8,7 @@ A test sample dataset (`test_data_file.csv`) has been created from the original 
 | File | Rows | Purpose | Notes |
 |------|------|---------|-------|
 | `test_data_file.csv` | 200 | Primary balanced dataset used for training demos | Includes the `Benign` label column |
-| `user_test_file.csv` | 10 | Ultra-light test file for System User uploads | Balanced 5 benign / 5 ransomware |
-| `user_dataset_with_labels.csv` | 20 | Example of a **labeled** dataset for retraining | Keeps the `Benign` column |
-| `user_dataset_without_labels.csv` | 20 | Example of an **unlabeled** dataset for end-user prediction | `Benign` column removed |
+| `user_test_file.csv` | 10 | Ultra-light test file for System User uploads | Balanced 5 benign / 5 ransomware, `Benign` column removed |
 
 All four CSVs share the same feature columns as the original Kaggle dataset. The `FileName` values were sanitized to neutral identifiers such as `Sample_0007_RANSOM` so nothing in the UI exposes vendor-specific names like “VirusShare”.
 
@@ -51,7 +49,7 @@ If you simply want to demonstrate the System User interface (upload → detect r
    - Displays total counts, analysis time, and the exact sample names that were flagged.
    - Stores the upload in the history table so users can trace previous runs.
 
-You can also upload `user_dataset_with_labels.csv`; the backend ignores extra columns during prediction, so both labeled and unlabeled files work for System Users. The only difference is that labeled files are suitable for retraining if you switch to an admin role later.
+Because `user_test_file.csv` is unlabeled, it mirrors the exact experience a production System User has—no exposure to the `Benign` column or any hint about which rows are malicious. Admin roles should continue using `test_data_file.csv` (or another labeled dataset) when training or retraining.
 
 ## Dataset Structure
 1. Navigate to **"Train Model"** section
@@ -145,11 +143,9 @@ After uploading and training, you can verify:
 
 ## Files Created
 
-- `test_data_file.csv` - Main balanced dataset (200 samples)
-- `user_test_file.csv` - Mini dataset for demos (10 samples)
-- `user_dataset_with_labels.csv` - Sample labeled dataset (20 samples)
-- `user_dataset_without_labels.csv` - Sample unlabeled dataset (20 samples)
+- `test_data_file.csv` - Main balanced dataset (200 samples, labeled)
+- `user_test_file.csv` - Mini dataset for demos (10 samples, unlabeled)
 - `create_test_dataset.py` - Script to generate large balanced dataset
-- `create_user_test_csv.py` - Script to regenerate the mini dataset
+- `create_user_test_csv.py` - Script to regenerate the unlabeled mini dataset
 - `TEST_DATASET_README.md` - This documentation
 

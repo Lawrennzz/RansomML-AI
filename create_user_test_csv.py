@@ -28,10 +28,16 @@ test_df = test_df.sample(frac=1, random_state=42).reset_index(drop=True)
 print(f"\nTest dataset created: {len(test_df)} rows")
 print(f"Benign: {(test_df['Benign']==1).sum()}, Ransomware: {(test_df['Benign']==0).sum()}")
 
+# Sanitize filenames and drop Benign column for end-user testing
+test_df = test_df.copy()
+test_df['FileName'] = [f"Sample_{i+1:04d}" for i in range(len(test_df))]
+
+output_df = test_df.drop(columns=['Benign'])
+
 # Save to new CSV file
 output_file = os.path.join(script_dir, 'user_test_file.csv')
-test_df.to_csv(output_file, index=False)
+output_df.to_csv(output_file, index=False)
 
 print(f"\n[SUCCESS] User test file created: {output_file}")
-print(f"File contains {len(test_df)} samples - perfect for quick testing!")
+print(f"File contains {len(output_df)} unlabeled samples for System User testing!")
 
