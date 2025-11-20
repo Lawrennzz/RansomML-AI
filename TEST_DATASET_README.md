@@ -8,10 +8,11 @@ A test sample dataset (`test_data_file.csv`) has been created from the original 
 | File | Rows | Purpose | Notes |
 |------|------|---------|-------|
 | `test_data_file.csv` | 200 | Primary balanced dataset used for training demos | Includes the `Benign` label column |
-| `user_test_file.csv` | 10 | Ultra-light test file for System User uploads | Balanced 5 benign / 5 ransomware, `Benign` column removed |
-| `user_test_file_large.csv` | 50 | Larger System User demo dataset | Balanced 25 benign / 25 ransomware, unlabeled |
+| `user_test_file_10.csv` | 10 | Small test file for System User uploads | Balanced 5 benign / 5 ransomware, `Benign` column removed |
+| `user_test_file_50.csv` | 50 | Medium System User demo dataset | Balanced 25 benign / 25 ransomware, unlabeled |
+| `user_test_file_200.csv` | 200 | Large System User demo dataset | Same data as `test_data_file.csv` but unlabeled |
 
-All four CSVs share the same feature columns as the original Kaggle dataset. The `FileName` values were sanitized to neutral identifiers such as `Sample_0007_RANSOM` so nothing in the UI exposes vendor-specific names like “VirusShare”.
+All datasets share the same feature columns as the original Kaggle dataset. The `FileName` values use neutral `Sample_0001`, `Sample_0002`, etc. format (no "BENIGN" or "RANSOM" suffixes) so nothing in the UI exposes vendor-specific names like "VirusShare".
 
 ## How to Use
 
@@ -42,15 +43,16 @@ python app.py
 If you simply want to demonstrate the System User interface (upload → detect ransomware, no training required), use one of the unlabeled CSVs:
 
 1. Log in as the **System User** account (`user@example.com` / `user123`).
-2. In the simplified interface, upload either:
-   - `user_test_file.csv` (quick 10-row file), or
-   - `user_test_file_large.csv` (larger 50-row file to showcase longer processing and more detections).
+2. In the simplified interface, upload one of the unlabeled datasets:
+   - `user_test_file_10.csv` (quick 10-row file for fast testing)
+   - `user_test_file_50.csv` (medium 50-row file for moderate testing)
+   - `user_test_file_200.csv` (large 200-row file for full-scale testing)
 3. The system:
    - Automatically runs batch prediction on all rows.
    - Displays total counts, analysis time, and the exact sample names that were flagged.
    - Stores the upload in the history table so users can trace previous runs.
 
-Because both System User CSVs are unlabeled, they mirror the exact experience a production System User has—no exposure to the `Benign` column or any hint about which rows are malicious. Admin roles should continue using `test_data_file.csv` (or another labeled dataset) when training or retraining.
+All System User datasets are unlabeled (no `Benign` column) and use neutral `Sample_0001` format filenames. This mirrors the exact experience a production System User has—no exposure to labels or any hint about which rows are malicious. Admin roles should continue using `test_data_file.csv` (or another labeled dataset) when training or retraining.
 
 ## Dataset Structure
 1. Navigate to **"Train Model"** section
@@ -144,10 +146,11 @@ After uploading and training, you can verify:
 
 ## Files Created
 
-- `test_data_file.csv` - Main balanced dataset (200 samples, labeled)
-- `user_test_file.csv` - Mini dataset for demos (10 samples, unlabeled)
-- `user_test_file_large.csv` - Larger demo dataset (50 samples, unlabeled)
+- `test_data_file.csv` - Main balanced dataset (200 samples, labeled) - For admin roles
+- `user_test_file_10.csv` - Small dataset for demos (10 samples, unlabeled) - For System Users
+- `user_test_file_50.csv` - Medium dataset for demos (50 samples, unlabeled) - For System Users
+- `user_test_file_200.csv` - Large dataset for demos (200 samples, unlabeled) - For System Users
 - `create_test_dataset.py` - Script to generate large balanced dataset
-- `create_user_test_csv.py` - Script to regenerate the unlabeled demo datasets
+- `create_user_test_csv.py` - Script to regenerate all unlabeled demo datasets (10, 50, 200 rows)
 - `TEST_DATASET_README.md` - This documentation
 

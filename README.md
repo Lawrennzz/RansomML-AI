@@ -114,18 +114,20 @@ The notebook provides a comprehensive analysis environment with:
 - **`ransomware_svm_model.pkl`** - SVM model
 - **`detection_logs.csv`** - Detection history
 - **`test_data_file.csv`** - Balanced admin dataset with labels (200 rows)
-- **`user_test_file.csv`** - Lightweight System User dataset without labels (10 rows)
-- **`user_test_file_large.csv`** - Larger System User dataset without labels (50 rows)
+- **`user_test_file_10.csv`** - Small System User dataset without labels (10 rows)
+- **`user_test_file_50.csv`** - Medium System User dataset without labels (50 rows)
+- **`user_test_file_200.csv`** - Large System User dataset without labels (200 rows)
 
 ### **🧪 Sample Datasets for Testing**
 
 | File | Rows | Role | Description |
 |------|------|------|-------------|
 | `test_data_file.csv` | 200 | Cybersecurity Pro / Researcher | Balanced dataset with the `Benign` label. Use this (or any labeled CSV) when training or retraining models. |
-| `user_test_file.csv` | 10 | System User | Unlabeled dataset with sanitized `SampleShort_0001` filenames. Ideal for a quick upload → detect demo. |
-| `user_test_file_large.csv` | 50 | System User | Larger unlabeled dataset (25 benign / 25 ransomware). Demonstrates uploads that take longer and produce bigger detection tables. |
+| `user_test_file_10.csv` | 10 | System User | Small unlabeled dataset with `Sample_0001` format filenames. Quick upload → detect demo. |
+| `user_test_file_50.csv` | 50 | System User | Medium unlabeled dataset (25 benign / 25 ransomware). Demonstrates moderate-sized uploads. |
+| `user_test_file_200.csv` | 200 | System User | Large unlabeled dataset. Same data as `test_data_file.csv` but without `Benign` column. Full-scale testing. |
 
-System Users only need feature columns; the backend drops the `Benign` column if it happens to be present. Admin roles must supply labeled data when training, so keep `Benign` for any dataset you plan to feed into `/api/train`.
+All System User datasets use neutral `Sample_0001`, `Sample_0002`, etc. filenames and contain no `Benign` column. System Users only need feature columns; the backend drops the `Benign` column if it happens to be present. Admin roles must supply labeled data when training, so keep `Benign` for any dataset you plan to feed into `/api/train`.
 
 ---
 
