@@ -113,6 +113,19 @@ The notebook provides a comprehensive analysis environment with:
 - **`ransomware_scaler.pkl`** - Feature scaler
 - **`ransomware_svm_model.pkl`** - SVM model
 - **`detection_logs.csv`** - Detection history
+- **`user_dataset_with_labels.csv`** - Sample dataset (20 rows) with `Benign` labels for training demos
+- **`user_dataset_without_labels.csv`** - Sample dataset (20 rows) without labels for system-user prediction demos
+
+### **🧪 Sample Datasets for Testing**
+
+Two lightweight CSVs are included so you can demo the workflow quickly:
+
+| File | Rows | Purpose |
+|------|------|---------|
+| `user_dataset_with_labels.csv` | 20 | Contains the `Benign` column. Use this when retraining or demonstrating how labeled datasets look. |
+| `user_dataset_without_labels.csv` | 20 | Same records with the `Benign` column removed. Ideal for system-user uploads when only predictions are needed. |
+
+Both files use neutral `Sample_XXXX_{BENIGN|RANSOM}` filenames and the exact same feature columns as the main dataset. During prediction the backend ignores `Benign` if it exists, so either file works for the user role. During training, the `Benign` column is required, so use the labeled version (or any dataset that keeps that column) when calling `/api/train`.
 
 ---
 
